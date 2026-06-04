@@ -206,8 +206,8 @@ th, td { padding: 8px 5px; text-align: center; border-bottom: 1px solid var(--li
 th { color: var(--muted); font-weight: 500; font-size: 0.78rem; }
 td.rarity { font-weight: 900; text-align: left; }
 .compare-num { font-family: 'Orbitron'; font-size: 0.88rem; }
-.diff-up   { color: #ff8c8c; }
-.diff-down { color: #8cffb0; }
+.diff-up   { color: #8cffb0; }
+.diff-down { color: #ff8c8c; }
 
 .bag-status { font-size: 0.82rem; color: var(--r); margin-top: 6px; text-align: center; font-weight: 700; }
 
@@ -226,6 +226,22 @@ canvas.chart { width: 100%; height: 120px; border-radius: 8px; display: block; }
   background: rgba(0,150,70,0.05); border-color: rgba(0,150,70,0.25);
 }
 .insight strong { color: var(--accent); }
+
+/* ライトモード：黄色テキストを暗い色に */
+[data-theme="light"] h1 {
+  background: linear-gradient(90deg, #7a5800, #9a6e00);
+  -webkit-background-clip: text; background-clip: text;
+}
+[data-theme="light"] .card h2,
+[data-theme="light"] .total-pulls,
+[data-theme="light"] .ev-val,
+[data-theme="light"] .compare-col-header { color: #7a5800; }
+[data-theme="light"] .pct-val { color: #7a5800 !important; }
+[data-theme="light"] .mode-btn.active {
+  color: #7a5800;
+  border-color: #9a7000;
+  box-shadow: 0 0 16px rgba(154,112,0,0.15);
+}
 
 /* Bag grid */
 .bag-grid-wrap { margin-top: 14px; }
