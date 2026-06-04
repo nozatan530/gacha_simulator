@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ガチャ確率シミュレーター</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Orbitron:wght@700;900&display=swap');
+
+  :root {
+    --bg: #0f1226;
+    --panel: #1a1f3d;
+    --panel-light: #252b52;
+    --gold: #ffd54a;
+    --ssr: #ffcf33;   /* ゴールド */
+    --sr: #cfd6e0;    /* シルバー */
+    --r: #c8743a;     /* ブロンズ（銅・はっきりした茶系でゴールドと区別） */
+    --text: #eef1ff;
+    --muted: #9aa0c8;
+    --accent: #4ade80;
+    --line: #333a66;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: radial-gradient(ellipse at top, #1b2150 0%, #0f1226 60%);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 20px;
+    line-height: 1.6;
+  }
+
+  .wrap { max-width: 1100px; margin: 0 auto; }
+
+  h1 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.8rem;
+    text-align: center;
+    background: linear-gradient(90deg, var(--gold), var(--ssr));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 4px;
+    letter-spacing: 1px;
+  }
+  .subtitle { text-align: center; color: var(--muted); font-size: 0.85rem; margin-bottom: 20px; }
+
+  .mode-switch {
+    display: flex; gap: 8px; justify-content: center; margin-bottom: 20px;
+  }
+  .mode-btn {
+    padding: 10px 22px; border: 2px solid var(--line); background: var(--panel);
+    color: var(--muted); border-radius: 12px; cursor: pointer; font-weight: 700;
+    font-size: 0.9rem; transition: all 0.2s; font-family: inherit;
+  }
+  .mode-btn.active {
+    border-color: var(--gold); color: var(--gold); background: var(--panel-light);
+    box-shadow: 0 0 16px rgba(255,213,74,0.25);
+  }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 16px; padding: 18px;
+  }
+  .card h2 { font-size: 1rem; margin-bottom: 14px; color: var(--gold); letter-spacing: 0.5px; }
+
+  .slider-row { margin-bottom: 16px; }
+  .slider-label { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 0.88rem; font-weight: 500; }
+  .rarity-tag { font-weight: 900; padding: 1px 8px; border-radius: 6px; font-size: 0.8rem; }
+  .tag-ssr { background: var(--ssr); color: #4a3500; }
+  .tag-sr { background: var(--sr); color: #2a2f3a; }
+  .tag-r { background: var(--r); color: #2a1505; }
+  .pct-val { font-family: 'Orbitron'; font-size: 1rem; }
+
+  input[type=range] { width: 100%; height: 6px; border-radius: 4px; background: var(--line); outline: none; -webkit-appearance: none; cursor: pointer; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--gold); cursor: pointer; box-shadow: 0 0 8px rgba(255,213,74,0.5); }
+
+  .total-check { font-size: 0.82rem; text-align: right; color: var(--muted); margin-top: 4px; }
+  .total-check.bad { color: #ff6b6b; font-weight: 700; }
+  .total-check.ok { color: var(--accent); }
+
+  .count-box { background: var(--panel-light); border-radius: 10px; padding: 10px 12px; margin-top: 10px; font-size: 0.85rem; display: none; }
+  .count-box.show { display: block; }
+  .count-box.bad { border: 1px solid #ff6b6b; }
+
+  .btn-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+  .pull-btn {
+    flex: 1; min-width: 90px; padding: 13px 8px; border: none; border-radius: 12px;
+    font-weight: 700; font-size: 0.92rem; cursor: pointer; font-family: inherit;
+    background: linear-gradient(135deg, #3a4180, #252b52); color: var(--text);
+    border: 1px solid var(--line); transition: transform 0.1s, box-shadow 0.2s;
+  }
+  .pull-btn:hover { box-shadow: 0 0 14px rgba(109,179,242,0.3); transform: translateY(-1px); }
+  .pull-btn:active { transform: translateY(1px); }
+  .pull-btn.primary { background: linear-gradient(135deg, var(--gold), var(--ssr)); color: #2a1100; border: none; }
+  .pull-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .reset-btn { width: 100%; margin-top: 8px; padding: 9px; background: transparent; border: 1px solid var(--line); color: var(--muted); border-radius: 10px; cursor: pointer; font-family: inherit; font-size: 0.82rem; }
+  .reset-btn:hover { border-color: #ff6b6b; color: #ff6b6b; }
+
+  /* results */
+  .latest { min-height: 70px; max-height: 260px; overflow-y: auto; display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start; margin-bottom: 14px; padding: 10px; background: var(--panel-light); border-radius: 10px; }
+  .pull-chip { width: 38px; height: 38px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 0.78rem; animation: pop 0.3s ease; }
+  @keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
+  .chip-ssr { background: var(--ssr); color: #4a3500; box-shadow: 0 0 12px var(--ssr); }
+  .chip-sr { background: var(--sr); color: #2a2f3a; }
+  .chip-r { background: var(--r); color: #2a1505; }
+  .latest-empty { color: var(--muted); font-size: 0.85rem; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  th, td { padding: 9px 6px; text-align: center; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 500; font-size: 0.8rem; }
+  td.rarity { font-weight: 900; text-align: left; }
+  .bar-cell { width: 100%; }
+  .bar-track { background: var(--panel-light); border-radius: 4px; height: 8px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
+
+  .compare { font-family: 'Orbitron'; font-size: 0.95rem; }
+  .diff-up { color: #ff8c8c; }
+  .diff-down { color: #8cffb0; }
+
+  .total-pulls { text-align: center; font-family: 'Orbitron'; font-size: 1.4rem; color: var(--gold); margin: 6px 0 2px; }
+  .total-pulls-label { text-align: center; font-size: 0.78rem; color: var(--muted); margin-bottom: 12px; }
+
+  .insight { background: linear-gradient(135deg, rgba(74,222,128,0.08), rgba(74,222,128,0.02)); border: 1px solid rgba(74,222,128,0.3); border-radius: 12px; padding: 14px; margin-top: 16px; font-size: 0.86rem; }
+  .insight strong { color: var(--accent); }
+
+  .note { font-size: 0.78rem; color: var(--muted); margin-top: 10px; }
+  .bag-status { font-size: 0.82rem; color: var(--r); margin-top: 8px; text-align: center; font-weight: 700; }
+
+  /* 100個グリッド */
+  .bag-grid-wrap { margin-top: 14px; }
+  .bag-grid-title { font-size: 0.82rem; color: var(--muted); margin-bottom: 8px; }
+  .bag-grid { display: grid; grid-template-columns: repeat(20, 1fr); gap: 3px; }
+  @media (max-width: 760px) { .bag-grid { grid-template-columns: repeat(10, 1fr); } }
+  .bag-cell {
+    aspect-ratio: 1; border-radius: 3px; background: var(--panel-light);
+    border: 1px solid var(--line); transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.5rem; font-weight: 900; color: transparent;
+  }
+  .bag-cell.filled-ssr { background: var(--ssr); border-color: var(--ssr); }
+  .bag-cell.filled-sr { background: var(--sr); border-color: var(--sr); }
+  .bag-cell.filled-r { background: var(--r); border-color: var(--r); }
+  .bag-cell.drawn { opacity: 0.18; transform: scale(0.85); }
+  .bag-legend { display: flex; gap: 14px; margin-top: 10px; font-size: 0.74rem; color: var(--muted); flex-wrap: wrap; }
+  .bag-legend span { display: flex; align-items: center; gap: 4px; }
+  .legend-dot { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>GACHA SIMULATOR</h1>
+  <p class="subtitle">表示されている確率と、実際に引いた体感はどれくらいズレる？</p>
+
+  <div class="mode-switch">
+    <button class="mode-btn active" id="modeReplace" onclick="setMode('replace')">🎰 ガチャ（復元抽出）</button>
+    <button class="mode-btn" id="modeNoReplace" onclick="setMode('noreplace')">🎁 福袋（非復元抽出）</button>
+  </div>
+
+  <div class="grid">
+    <!-- 設定パネル -->
+    <div class="card">
+      <h2>⚙️ 排出確率を設定</h2>
+
+      <div class="slider-row">
+        <div class="slider-label">
+          <span class="rarity-tag tag-ssr">SSR</span>
+          <span class="pct-val" id="ssrVal" style="color:var(--ssr)">3%</span>
+        </div>
+        <input type="range" id="ssrSlider" min="0" max="100" value="3" step="1" oninput="onSlider()">
+      </div>
+
+      <div class="slider-row">
+        <div class="slider-label">
+          <span class="rarity-tag tag-sr">SR</span>
+          <span class="pct-val" id="srVal" style="color:var(--sr)">12%</span>
+        </div>
+        <input type="range" id="srSlider" min="0" max="100" value="12" step="1" oninput="onSlider()">
+      </div>
+
+      <div class="slider-row">
+        <div class="slider-label">
+          <span class="rarity-tag tag-r">R（自動計算）</span>
+          <span class="pct-val" id="rVal" style="color:var(--r)">85%</span>
+        </div>
+        <div style="font-size:0.78rem;color:var(--muted)">R＝100％ − SSR − SR で自動的に決まります</div>
+      </div>
+
+      <div class="total-check ok" id="totalCheck">合計：100%</div>
+
+      <div class="count-box" id="countBox">
+        <strong>袋の中身（合計100個）</strong>
+        <div id="countDetail"></div>
+      </div>
+
+      <div class="bag-status" id="bagStatus"></div>
+
+      <div class="btn-row">
+        <button class="pull-btn primary" id="btn1" onclick="pull(1)">1回引く</button>
+        <button class="pull-btn" id="btn10" onclick="pull(10)">10連</button>
+        <button class="pull-btn" id="btnBig" onclick="pullBig()">100連</button>
+      </div>
+      <button class="reset-btn" onclick="resetAll()">↺ リセット</button>
+
+      <p class="note" id="modeNote"></p>
+    </div>
+
+    <!-- 結果パネル -->
+    <div class="card">
+      <h2>📊 結果</h2>
+      <div class="total-pulls" id="totalPulls">0</div>
+      <div class="total-pulls-label">これまでに引いた回数</div>
+
+      <div class="latest" id="latest"><span class="latest-empty">ここに引いた結果が表示されます</span></div>
+
+      <table>
+        <thead>
+          <tr><th style="text-align:left">レア</th><th>表示確率</th><th>出た回数</th><th>体感確率</th></tr>
+        </thead>
+        <tbody id="resultBody"></tbody>
+      </table>
+
+      <div class="insight" id="insight" style="display:none"></div>
+
+      <div class="bag-grid-wrap" id="bagGridWrap" style="display:none">
+        <div class="bag-grid-title">🎁 袋の中身（100個）— 引いたものは薄くなります</div>
+        <div class="bag-grid" id="bagGrid"></div>
+        <div class="bag-legend">
+          <span><i class="legend-dot" style="background:var(--ssr)"></i>SSR</span>
+          <span><i class="legend-dot" style="background:var(--sr)"></i>SR</span>
+          <span><i class="legend-dot" style="background:var(--r)"></i>R</span>
+          <span><i class="legend-dot" style="background:var(--panel-light)"></i>引いた後</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let mode = 'replace';
+  const rarities = ['ssr','sr','r'];
+  const labels = { ssr:'SSR', sr:'SR', r:'R' };
+  const colors = { ssr:'var(--ssr)', sr:'var(--sr)', r:'var(--r)' };
+
+  let counts = { ssr:0, sr:0, r:0 };
+  let totalPulls = 0;
+  let history = []; // 引いた履歴（全件・新しい順に表示）
+  let bag = []; // 非復元用（引く順：シャッフル済み、pop で取り出す）
+  let bagGrid = []; // 表示用100セル {rarity, drawn} 固定順
+
+  function getProbs() {
+    let ssr = +document.getElementById('ssrSlider').value;
+    let sr = +document.getElementById('srSlider').value;
+    // SSR + SR が 100 を超えないように SR を抑える
+    if (ssr + sr > 100) sr = 100 - ssr;
+    const r = 100 - ssr - sr;
+    return { ssr, sr, r };
+  }
+
+  function onSlider() {
+    let ssr = +document.getElementById('ssrSlider').value;
+    let sr = +document.getElementById('srSlider').value;
+    // SSR優先：SSR+SRが100を超えたらSRスライダーを戻す
+    if (ssr + sr > 100) {
+      sr = 100 - ssr;
+      document.getElementById('srSlider').value = sr;
+    }
+    const r = 100 - ssr - sr;
+
+    document.getElementById('ssrVal').textContent = ssr + '%';
+    document.getElementById('srVal').textContent = sr + '%';
+    document.getElementById('rVal').textContent = r + '%';
+
+    const tc = document.getElementById('totalCheck');
+    tc.textContent = `合計：100%（SSR ${ssr}％ + SR ${sr}％ + R ${r}％）`;
+    tc.className = 'total-check ok';
+
+    if (mode === 'noreplace') { updateCountBox(); if (totalPulls === 0) renderBagGrid(); }
+    updateButtons();
+  }
+
+  function updateCountBox() {
+    const p = getProbs();
+    const box = document.getElementById('countBox');
+    const detail = document.getElementById('countDetail');
+    detail.innerHTML = `SSR ${p.ssr}個 ／ SR ${p.sr}個 ／ R ${p.r}個`;
+    box.className = 'count-box show';
+  }
+
+  function setMode(m) {
+    mode = m;
+    document.getElementById('modeReplace').classList.toggle('active', m === 'replace');
+    document.getElementById('modeNoReplace').classList.toggle('active', m === 'noreplace');
+    document.getElementById('countBox').className = m === 'noreplace' ? 'count-box show' : 'count-box';
+    document.getElementById('bagGridWrap').style.display = m === 'noreplace' ? 'block' : 'none';
+    document.getElementById('btnBig').textContent = m === 'replace' ? '100連' : '全部引く';
+    document.getElementById('modeNote').textContent = m === 'replace'
+      ? 'ガチャは引いても確率が変わりません（毎回リセット）。何回引いても表示確率は一定です。'
+      : '福袋は引くと中身が減ります。引くほど残りの確率が変わっていきます。';
+    resetAll();
+    if (m === 'noreplace') { updateCountBox(); renderBagGrid(); }
+  }
+
+  function makeBag() {
+    const p = getProbs();
+    // 表示用グリッド：固定順（SSR→SR→R）で100個並べる
+    bagGrid = [];
+    for (let i=0;i<p.ssr;i++) bagGrid.push({rarity:'ssr', drawn:false});
+    for (let i=0;i<p.sr;i++) bagGrid.push({rarity:'sr', drawn:false});
+    for (let i=0;i<p.r;i++) bagGrid.push({rarity:'r', drawn:false});
+    // 引く順：グリッドのindexをシャッフルした配列
+    bag = bagGrid.map((_, idx) => idx);
+    for (let i=bag.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [bag[i],bag[j]]=[bag[j],bag[i]]; }
+    renderBagGrid();
+  }
+
+  function renderBagGrid() {
+    const grid = document.getElementById('bagGrid');
+    if (bagGrid.length === 0) {
+      // まだ袋を作っていない → プレビュー表示
+      const p = getProbs();
+      let preview = [];
+      for (let i=0;i<p.ssr;i++) preview.push({rarity:'ssr', drawn:false});
+      for (let i=0;i<p.sr;i++) preview.push({rarity:'sr', drawn:false});
+      for (let i=0;i<p.r;i++) preview.push({rarity:'r', drawn:false});
+      grid.innerHTML = preview.map(c => `<div class="bag-cell filled-${c.rarity}"></div>`).join('');
+      return;
+    }
+    grid.innerHTML = bagGrid.map(c =>
+      `<div class="bag-cell filled-${c.rarity} ${c.drawn?'drawn':''}"></div>`
+    ).join('');
+  }
+
+  function drawOne() {
+    if (mode === 'replace') {
+      const p = getProbs();
+      const roll = Math.random()*100;
+      if (roll < p.ssr) return 'ssr';
+      if (roll < p.ssr + p.sr) return 'sr';
+      return 'r';
+    } else {
+      if (bag.length === 0) return null;
+      const idx = bag.pop();
+      bagGrid[idx].drawn = true;
+      return bagGrid[idx].rarity;
+    }
+  }
+
+  function validProbs() {
+    return true; // R は自動計算なので常に合計100%
+  }
+
+  function pull(n) {
+    if (!validProbs()) { alert('確率の合計を100%にしてください'); return; }
+    if (mode === 'noreplace' && bag.length === 0 && totalPulls === 0) makeBag();
+
+    for (let i=0;i<n;i++){
+      const r = drawOne();
+      if (r === null) break;
+      counts[r]++; totalPulls++; history.push(r);
+    }
+    renderHistory();
+    render();
+  }
+
+  function pullBig() {
+    if (!validProbs()) { alert('確率の合計を100%にしてください'); return; }
+    if (mode === 'replace') {
+      pull(100);
+    } else {
+      if (bag.length === 0 && totalPulls === 0) makeBag();
+      const remaining = bag.length;
+      pull(remaining);
+    }
+  }
+
+  function renderHistory() {
+    const el = document.getElementById('latest');
+    if (history.length === 0) { el.innerHTML = '<span class="latest-empty">ここに引いた結果が表示されます</span>'; return; }
+    // 新しい順に表示。DOM負荷を抑えるため最新300件まで描画
+    const CAP = 300;
+    const reversed = history.slice().reverse();
+    const show = reversed.slice(0, CAP);
+    let html = show.map(r => `<div class="pull-chip chip-${r}">${labels[r]}</div>`).join('');
+    if (history.length > CAP) {
+      html += `<span style="color:var(--muted);font-size:0.8rem;align-self:center">…古い${history.length-CAP}件は省略</span>`;
+    }
+    el.innerHTML = html;
+  }
+
+  function render() {
+    document.getElementById('totalPulls').textContent = totalPulls.toLocaleString();
+    const p = getProbs();
+    const body = document.getElementById('resultBody');
+    body.innerHTML = '';
+    rarities.forEach(r => {
+      const shown = p[r];
+      const actual = totalPulls > 0 ? (counts[r]/totalPulls*100) : 0;
+      const diff = actual - shown;
+      let diffStr = '';
+      if (totalPulls > 0) {
+        const sign = diff >= 0 ? '+' : '';
+        const cls = diff >= 0 ? 'diff-up' : 'diff-down';
+        diffStr = ` <span class="${cls}" style="font-size:0.75rem">(${sign}${diff.toFixed(1)})</span>`;
+      }
+      body.innerHTML += `
+        <tr>
+          <td class="rarity" style="color:${colors[r]}">${labels[r]}</td>
+          <td>${shown}%</td>
+          <td>${counts[r]}</td>
+          <td class="compare">${totalPulls>0?actual.toFixed(1)+'%':'—'}${diffStr}</td>
+        </tr>`;
+    });
+
+    // bag status
+    const bs = document.getElementById('bagStatus');
+    if (mode === 'noreplace' && totalPulls > 0) {
+      bs.textContent = `袋の残り：${bag.length}個`;
+    } else { bs.textContent = ''; }
+
+    if (mode === 'noreplace') renderBagGrid();
+
+    updateButtons();
+    renderInsight();
+  }
+
+  function updateButtons() {
+    if (mode === 'noreplace') {
+      const empty = totalPulls > 0 && bag.length === 0;
+      document.getElementById('btn1').disabled = empty;
+      document.getElementById('btn10').disabled = empty;
+      document.getElementById('btnBig').disabled = empty;
+    } else {
+      document.getElementById('btn1').disabled = false;
+      document.getElementById('btn10').disabled = false;
+      document.getElementById('btnBig').disabled = false;
+    }
+  }
+
+  function renderInsight() {
+    const el = document.getElementById('insight');
+    if (totalPulls < 10) { el.style.display = 'none'; return; }
+    const p = getProbs();
+    const actualSSR = counts.ssr/totalPulls*100;
+    const diff = Math.abs(actualSSR - p.ssr);
+    el.style.display = 'block';
+    let msg = '';
+    if (mode === 'replace') {
+      if (totalPulls < 50) {
+        msg = `<strong>まだ${totalPulls}回。</strong>体感確率は表示確率から大きくズレることがあります。「3%なのに全然出ない！」はこのズレが原因。もっと引くと表示確率に近づいていきます（大数の法則）。`;
+      } else {
+        msg = `<strong>${totalPulls}回引きました。</strong>SSRの体感は${actualSSR.toFixed(1)}%（表示${p.ssr}%との差${diff.toFixed(1)}ポイント）。引く回数が増えるほど、体感は表示確率に近づきます。`;
+      }
+    } else {
+      if (bag.length === 0) {
+        msg = `<strong>袋を全部引きました。</strong>非復元では最後まで引くと、体感確率は必ず表示確率と一致します（中身が決まっているから）。ガチャ（復元）との違いがポイントです。`;
+      } else {
+        msg = `<strong>残り${bag.length}個。</strong>非復元では引くたびに残りの確率が変化します。例えばSSRを引いたら、次にSSRが出る確率は下がります。`;
+      }
+    }
+    el.innerHTML = msg;
+  }
+
+  function resetAll() {
+    counts = { ssr:0, sr:0, r:0 };
+    totalPulls = 0; bag = []; bagGrid = []; history = [];
+    renderHistory();
+    render();
+    if (mode === 'noreplace') renderBagGrid();
+  }
+
+  onSlider();
+  resetAll();
+</script>
+</body>
+</html>
