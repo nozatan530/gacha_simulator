@@ -1,482 +1,779 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="ja" data-theme="dark">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>ガチャ確率シミュレーター</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Orbitron:wght@700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Orbitron:wght@700;900&display=swap');
 
-  :root {
-    --bg: #0f1226;
-    --panel: #1a1f3d;
-    --panel-light: #252b52;
-    --gold: #ffd54a;
-    --ssr: #ffcf33;   /* ゴールド */
-    --sr: #cfd6e0;    /* シルバー */
-    --r: #c8743a;     /* ブロンズ（銅・はっきりした茶系でゴールドと区別） */
-    --text: #eef1ff;
-    --muted: #9aa0c8;
-    --accent: #4ade80;
-    --line: #333a66;
-  }
+:root {
+  --gold: #ffd54a;
+  --ur: #ffcf33;
+  --sr: #cfd6e0;
+  --r: #c8743a;
+  --accent: #4ade80;
+}
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+[data-theme="dark"] {
+  --bg: #0f1226;
+  --panel: #1a1f3d;
+  --panel-light: #252b52;
+  --text: #eef1ff;
+  --muted: #9aa0c8;
+  --line: #333a66;
+  --body-bg: radial-gradient(ellipse at top, #1b2150 0%, #0f1226 60%);
+  --canvas-bg: #252b52;
+  --canvas-grid: #333a66;
+  --canvas-text: #9aa0c8;
+}
 
-  body {
-    font-family: 'Noto Sans JP', sans-serif;
-    background: radial-gradient(ellipse at top, #1b2150 0%, #0f1226 60%);
-    color: var(--text);
-    min-height: 100vh;
-    padding: 20px;
-    line-height: 1.6;
-  }
+[data-theme="light"] {
+  --bg: #f0f2ff;
+  --panel: #ffffff;
+  --panel-light: #eef0ff;
+  --text: #1a1f3d;
+  --muted: #6670a0;
+  --line: #d0d4ee;
+  --body-bg: radial-gradient(ellipse at top, #dde2ff 0%, #f0f2ff 60%);
+  --canvas-bg: #eef0ff;
+  --canvas-grid: #d0d4ee;
+  --canvas-text: #6670a0;
+}
 
-  .wrap { max-width: 1100px; margin: 0 auto; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
-  h1 {
-    font-family: 'Orbitron', sans-serif;
-    font-size: 1.8rem;
-    text-align: center;
-    background: linear-gradient(90deg, var(--gold), var(--ssr));
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    margin-bottom: 4px;
-    letter-spacing: 1px;
-  }
-  .subtitle { text-align: center; color: var(--muted); font-size: 0.85rem; margin-bottom: 20px; }
+body {
+  font-family: 'Noto Sans JP', sans-serif;
+  background: var(--body-bg);
+  color: var(--text);
+  min-height: 100vh;
+  padding: 16px;
+  line-height: 1.6;
+  transition: background 0.3s, color 0.3s;
+}
 
-  .mode-switch {
-    display: flex; gap: 8px; justify-content: center; margin-bottom: 20px;
-  }
-  .mode-btn {
-    padding: 10px 22px; border: 2px solid var(--line); background: var(--panel);
-    color: var(--muted); border-radius: 12px; cursor: pointer; font-weight: 700;
-    font-size: 0.9rem; transition: all 0.2s; font-family: inherit;
-  }
-  .mode-btn.active {
-    border-color: var(--gold); color: var(--gold); background: var(--panel-light);
-    box-shadow: 0 0 16px rgba(255,213,74,0.25);
-  }
+.wrap { max-width: 1300px; margin: 0 auto; }
 
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.header {
+  display: flex; align-items: center; justify-content: center;
+  position: relative; margin-bottom: 4px;
+}
 
-  .card {
-    background: var(--panel); border: 1px solid var(--line);
-    border-radius: 16px; padding: 18px;
-  }
-  .card h2 { font-size: 1rem; margin-bottom: 14px; color: var(--gold); letter-spacing: 0.5px; }
+h1 {
+  font-family: 'Orbitron', sans-serif;
+  font-size: clamp(1.3rem, 4vw, 1.8rem);
+  background: linear-gradient(90deg, var(--gold), var(--ur));
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: 1px;
+}
 
-  .slider-row { margin-bottom: 16px; }
-  .slider-label { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 0.88rem; font-weight: 500; }
-  .rarity-tag { font-weight: 900; padding: 1px 8px; border-radius: 6px; font-size: 0.8rem; }
-  .tag-ssr { background: var(--ssr); color: #4a3500; }
-  .tag-sr { background: var(--sr); color: #2a2f3a; }
-  .tag-r { background: var(--r); color: #2a1505; }
-  .pct-val { font-family: 'Orbitron'; font-size: 1rem; }
+.theme-btn {
+  position: absolute; right: 0;
+  background: var(--panel); border: 1px solid var(--line); color: var(--text);
+  border-radius: 50%; width: 42px; height: 42px;
+  font-size: 1.1rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s;
+}
+.theme-btn:hover { border-color: var(--gold); }
 
-  input[type=range] { width: 100%; height: 6px; border-radius: 4px; background: var(--line); outline: none; -webkit-appearance: none; cursor: pointer; }
-  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--gold); cursor: pointer; box-shadow: 0 0 8px rgba(255,213,74,0.5); }
+.subtitle { text-align: center; color: var(--muted); font-size: 0.85rem; margin-bottom: 16px; }
 
-  .total-check { font-size: 0.82rem; text-align: right; color: var(--muted); margin-top: 4px; }
-  .total-check.bad { color: #ff6b6b; font-weight: 700; }
-  .total-check.ok { color: var(--accent); }
+.mode-switch { display: flex; gap: 8px; justify-content: center; margin-bottom: 16px; flex-wrap: wrap; }
+.mode-btn {
+  padding: 10px 18px; border: 2px solid var(--line); background: var(--panel);
+  color: var(--muted); border-radius: 12px; cursor: pointer; font-weight: 700;
+  font-size: 0.88rem; transition: all 0.2s; font-family: inherit;
+}
+.mode-btn.active {
+  border-color: var(--gold); color: var(--gold); background: var(--panel-light);
+  box-shadow: 0 0 16px rgba(255,213,74,0.2);
+}
 
-  .count-box { background: var(--panel-light); border-radius: 10px; padding: 10px 12px; margin-top: 10px; font-size: 0.85rem; display: none; }
-  .count-box.show { display: block; }
-  .count-box.bad { border: 1px solid #ff6b6b; }
+/* Grid layouts */
+.grid-2 { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: 360px minmax(0,1fr) minmax(0,1fr); gap: 16px; }
+@media (max-width: 1000px) { .grid-3 { grid-template-columns: 1fr; } }
+@media (max-width: 680px)  { .grid-2 { grid-template-columns: 1fr; } }
 
-  .btn-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
-  .pull-btn {
-    flex: 1; min-width: 90px; padding: 13px 8px; border: none; border-radius: 12px;
-    font-weight: 700; font-size: 0.92rem; cursor: pointer; font-family: inherit;
-    background: linear-gradient(135deg, #3a4180, #252b52); color: var(--text);
-    border: 1px solid var(--line); transition: transform 0.1s, box-shadow 0.2s;
-  }
-  .pull-btn:hover { box-shadow: 0 0 14px rgba(109,179,242,0.3); transform: translateY(-1px); }
-  .pull-btn:active { transform: translateY(1px); }
-  .pull-btn.primary { background: linear-gradient(135deg, var(--gold), var(--ssr)); color: #2a1100; border: none; }
-  .pull-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.card {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 16px; padding: 18px;
+  transition: background 0.3s, border-color 0.3s;
+}
+.card h2 { font-size: 1rem; margin-bottom: 14px; color: var(--gold); letter-spacing: 0.5px; }
 
-  .reset-btn { width: 100%; margin-top: 8px; padding: 9px; background: transparent; border: 1px solid var(--line); color: var(--muted); border-radius: 10px; cursor: pointer; font-family: inherit; font-size: 0.82rem; }
-  .reset-btn:hover { border-color: #ff6b6b; color: #ff6b6b; }
+/* Sliders */
+.slider-row { margin-bottom: 16px; }
+.slider-label {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 6px; font-size: 0.88rem; font-weight: 500;
+}
+.rarity-tag { font-weight: 900; padding: 2px 8px; border-radius: 6px; font-size: 0.8rem; }
+.tag-ur { background: var(--ur); color: #4a3500; }
+.tag-sr { background: var(--sr); color: #2a2f3a; }
+.tag-r  { background: var(--r);  color: #2a1505; }
+.pct-val { font-family: 'Orbitron'; font-size: 1rem; }
 
-  /* results */
-  .latest { min-height: 70px; max-height: 260px; overflow-y: auto; display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start; margin-bottom: 14px; padding: 10px; background: var(--panel-light); border-radius: 10px; }
-  .pull-chip { width: 38px; height: 38px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 0.78rem; animation: pop 0.3s ease; }
-  @keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
-  .chip-ssr { background: var(--ssr); color: #4a3500; box-shadow: 0 0 12px var(--ssr); }
-  .chip-sr { background: var(--sr); color: #2a2f3a; }
-  .chip-r { background: var(--r); color: #2a1505; }
-  .latest-empty { color: var(--muted); font-size: 0.85rem; }
+input[type=range] {
+  width: 100%; height: 8px; border-radius: 4px; background: var(--line);
+  outline: none; -webkit-appearance: none; cursor: pointer;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 24px; height: 24px; border-radius: 50%;
+  background: var(--gold); cursor: pointer; box-shadow: 0 0 8px rgba(255,213,74,0.5);
+}
 
-  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
-  th, td { padding: 9px 6px; text-align: center; border-bottom: 1px solid var(--line); }
-  th { color: var(--muted); font-weight: 500; font-size: 0.8rem; }
-  td.rarity { font-weight: 900; text-align: left; }
-  .bar-cell { width: 100%; }
-  .bar-track { background: var(--panel-light); border-radius: 4px; height: 8px; overflow: hidden; }
-  .bar-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
+.total-check { font-size: 0.82rem; text-align: right; color: var(--muted); margin-top: 4px; }
+.total-check.ok { color: var(--accent); }
 
-  .compare { font-family: 'Orbitron'; font-size: 0.95rem; }
-  .diff-up { color: #ff8c8c; }
-  .diff-down { color: #8cffb0; }
+.count-box {
+  background: var(--panel-light); border-radius: 10px;
+  padding: 10px 12px; margin-top: 10px; font-size: 0.85rem;
+  display: none;
+}
+.count-box.show { display: block; }
 
-  .total-pulls { text-align: center; font-family: 'Orbitron'; font-size: 1.4rem; color: var(--gold); margin: 6px 0 2px; }
-  .total-pulls-label { text-align: center; font-size: 0.78rem; color: var(--muted); margin-bottom: 12px; }
+/* Expected value box */
+.ev-box {
+  margin-top: 12px; padding: 10px 14px;
+  background: var(--panel-light); border-radius: 10px; font-size: 0.85rem;
+}
+.ev-title { color: var(--muted); margin-bottom: 6px; font-size: 0.8rem; }
+.ev-cols { display: flex; gap: 20px; flex-wrap: wrap; }
+.ev-item { }
+.ev-label { font-size: 0.74rem; color: var(--muted); }
+.ev-val { font-family: 'Orbitron'; font-size: 1rem; color: var(--gold); }
 
-  .insight { background: linear-gradient(135deg, rgba(74,222,128,0.08), rgba(74,222,128,0.02)); border: 1px solid rgba(74,222,128,0.3); border-radius: 12px; padding: 14px; margin-top: 16px; font-size: 0.86rem; }
-  .insight strong { color: var(--accent); }
+/* Pull buttons */
+.btn-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.pull-btn {
+  flex: 1; min-width: 80px; min-height: 52px;
+  padding: 14px 8px; border-radius: 12px;
+  font-weight: 700; font-size: 0.95rem; cursor: pointer; font-family: inherit;
+  background: linear-gradient(135deg, #3a4180, #252b52); color: var(--text);
+  border: 1px solid var(--line); transition: transform 0.1s, box-shadow 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+[data-theme="light"] .pull-btn {
+  background: linear-gradient(135deg, #5a6ac0, #7080d0); color: #fff;
+}
+.pull-btn:hover  { box-shadow: 0 0 14px rgba(109,179,242,0.3); transform: translateY(-1px); }
+.pull-btn:active { transform: translateY(1px); }
+.pull-btn.primary { background: linear-gradient(135deg, var(--gold), var(--ur)); color: #2a1100; border: none; }
+.pull-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; }
 
-  .note { font-size: 0.78rem; color: var(--muted); margin-top: 10px; }
-  .bag-status { font-size: 0.82rem; color: var(--r); margin-top: 8px; text-align: center; font-weight: 700; }
+.reset-btn {
+  width: 100%; margin-top: 8px; padding: 10px;
+  background: transparent; border: 1px solid var(--line); color: var(--muted);
+  border-radius: 10px; cursor: pointer; font-family: inherit; font-size: 0.84rem;
+}
+.reset-btn:hover { border-color: #ff6b6b; color: #ff6b6b; }
 
-  /* 100個グリッド */
-  .bag-grid-wrap { margin-top: 14px; }
-  .bag-grid-title { font-size: 0.82rem; color: var(--muted); margin-bottom: 8px; }
-  .bag-grid { display: grid; grid-template-columns: repeat(20, 1fr); gap: 3px; }
-  @media (max-width: 760px) { .bag-grid { grid-template-columns: repeat(10, 1fr); } }
-  .bag-cell {
-    aspect-ratio: 1; border-radius: 3px; background: var(--panel-light);
-    border: 1px solid var(--line); transition: all 0.2s;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 0.5rem; font-weight: 900; color: transparent;
-  }
-  .bag-cell.filled-ssr { background: var(--ssr); border-color: var(--ssr); }
-  .bag-cell.filled-sr { background: var(--sr); border-color: var(--sr); }
-  .bag-cell.filled-r { background: var(--r); border-color: var(--r); }
-  .bag-cell.drawn { opacity: 0.18; transform: scale(0.85); }
-  .bag-legend { display: flex; gap: 14px; margin-top: 10px; font-size: 0.74rem; color: var(--muted); flex-wrap: wrap; }
-  .bag-legend span { display: flex; align-items: center; gap: 4px; }
-  .legend-dot { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+.note { font-size: 0.78rem; color: var(--muted); margin-top: 10px; }
+
+/* Results */
+.compare-col-header {
+  text-align: center; font-size: 0.9rem; font-weight: 700;
+  color: var(--gold); margin-bottom: 12px; padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.total-pulls { text-align: center; font-family: 'Orbitron'; font-size: 1.4rem; color: var(--gold); margin: 4px 0 2px; }
+.total-pulls-label { text-align: center; font-size: 0.78rem; color: var(--muted); margin-bottom: 10px; }
+
+.latest {
+  min-height: 56px; max-height: 180px; overflow-y: auto;
+  display: flex; flex-wrap: wrap; gap: 5px; align-content: flex-start;
+  margin-bottom: 12px; padding: 8px;
+  background: var(--panel-light); border-radius: 10px;
+}
+.pull-chip {
+  width: 36px; height: 36px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 900; font-size: 0.75rem; animation: pop 0.25s ease;
+}
+@keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
+.chip-ur { background: var(--ur); color: #4a3500; box-shadow: 0 0 10px var(--ur); }
+.chip-sr { background: var(--sr); color: #2a2f3a; }
+.chip-r  { background: var(--r);  color: #2a1505; }
+.latest-empty { color: var(--muted); font-size: 0.84rem; }
+
+table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+th, td { padding: 8px 5px; text-align: center; border-bottom: 1px solid var(--line); }
+th { color: var(--muted); font-weight: 500; font-size: 0.78rem; }
+td.rarity { font-weight: 900; text-align: left; }
+.compare-num { font-family: 'Orbitron'; font-size: 0.88rem; }
+.diff-up   { color: #ff8c8c; }
+.diff-down { color: #8cffb0; }
+
+.bag-status { font-size: 0.82rem; color: var(--r); margin-top: 6px; text-align: center; font-weight: 700; }
+
+/* Graph */
+.graph-wrap { margin-top: 14px; }
+.graph-legend { font-size: 0.75rem; color: var(--muted); margin-bottom: 6px; }
+canvas.chart { width: 100%; height: 120px; border-radius: 8px; display: block; }
+
+/* Insight */
+.insight {
+  border: 1px solid rgba(74,222,128,0.3); border-radius: 12px;
+  padding: 12px; margin-top: 12px; font-size: 0.84rem;
+  background: linear-gradient(135deg, rgba(74,222,128,0.08), rgba(74,222,128,0.02));
+}
+[data-theme="light"] .insight {
+  background: rgba(0,150,70,0.05); border-color: rgba(0,150,70,0.25);
+}
+.insight strong { color: var(--accent); }
+
+/* Bag grid */
+.bag-grid-wrap { margin-top: 14px; }
+.bag-grid-title { font-size: 0.8rem; color: var(--muted); margin-bottom: 8px; }
+.bag-grid { display: grid; grid-template-columns: repeat(20,1fr); gap: 2px; }
+@media (max-width: 680px) { .bag-grid { grid-template-columns: repeat(10,1fr); } }
+.bag-cell {
+  aspect-ratio: 1; border-radius: 3px;
+  background: var(--panel-light); border: 1px solid var(--line);
+  transition: all 0.2s;
+}
+.bag-cell.filled-ur { background: var(--ur); border-color: var(--ur); }
+.bag-cell.filled-sr { background: var(--sr); border-color: var(--sr); }
+.bag-cell.filled-r  { background: var(--r);  border-color: var(--r); }
+.bag-cell.drawn { opacity: 0.18; transform: scale(0.82); }
+.bag-legend { display: flex; gap: 12px; margin-top: 8px; font-size: 0.74rem; color: var(--muted); flex-wrap: wrap; }
+.bag-legend span { display: flex; align-items: center; gap: 4px; }
+.legend-dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>GACHA SIMULATOR</h1>
+  <div class="header">
+    <h1>GACHA SIMULATOR</h1>
+    <button class="theme-btn" id="themeBtn" onclick="toggleTheme()" title="ライト/ダーク切替">🌙</button>
+  </div>
   <p class="subtitle">表示されている確率と、実際に引いた体感はどれくらいズレる？</p>
 
   <div class="mode-switch">
-    <button class="mode-btn active" id="modeReplace" onclick="setMode('replace')">🎰 ガチャ（復元抽出）</button>
-    <button class="mode-btn" id="modeNoReplace" onclick="setMode('noreplace')">🎁 福袋（非復元抽出）</button>
+    <button class="mode-btn active" id="modeReplace"   onclick="setMode('replace')">🎰 ガチャ（復元抽出）</button>
+    <button class="mode-btn"        id="modeNoReplace" onclick="setMode('noreplace')">🎁 福袋（非復元抽出）</button>
+    <button class="mode-btn"        id="modeCompare"   onclick="setMode('compare')">⚖️ 並べて比較</button>
   </div>
 
-  <div class="grid">
-    <!-- 設定パネル -->
-    <div class="card">
-      <h2>⚙️ 排出確率を設定</h2>
-
-      <div class="slider-row">
-        <div class="slider-label">
-          <span class="rarity-tag tag-ssr">SSR</span>
-          <span class="pct-val" id="ssrVal" style="color:var(--ssr)">3%</span>
-        </div>
-        <input type="range" id="ssrSlider" min="0" max="100" value="3" step="1" oninput="onSlider()">
-      </div>
-
-      <div class="slider-row">
-        <div class="slider-label">
-          <span class="rarity-tag tag-sr">SR</span>
-          <span class="pct-val" id="srVal" style="color:var(--sr)">12%</span>
-        </div>
-        <input type="range" id="srSlider" min="0" max="100" value="12" step="1" oninput="onSlider()">
-      </div>
-
-      <div class="slider-row">
-        <div class="slider-label">
-          <span class="rarity-tag tag-r">R（自動計算）</span>
-          <span class="pct-val" id="rVal" style="color:var(--r)">85%</span>
-        </div>
-        <div style="font-size:0.78rem;color:var(--muted)">R＝100％ − SSR − SR で自動的に決まります</div>
-      </div>
-
-      <div class="total-check ok" id="totalCheck">合計：100%</div>
-
-      <div class="count-box" id="countBox">
-        <strong>袋の中身（合計100個）</strong>
-        <div id="countDetail"></div>
-      </div>
-
-      <div class="bag-status" id="bagStatus"></div>
-
-      <div class="btn-row">
-        <button class="pull-btn primary" id="btn1" onclick="pull(1)">1回引く</button>
-        <button class="pull-btn" id="btn10" onclick="pull(10)">10連</button>
-        <button class="pull-btn" id="btnBig" onclick="pullBig()">100連</button>
-      </div>
-      <button class="reset-btn" onclick="resetAll()">↺ リセット</button>
-
-      <p class="note" id="modeNote"></p>
-    </div>
-
-    <!-- 結果パネル -->
-    <div class="card">
-      <h2>📊 結果</h2>
-      <div class="total-pulls" id="totalPulls">0</div>
-      <div class="total-pulls-label">これまでに引いた回数</div>
-
-      <div class="latest" id="latest"><span class="latest-empty">ここに引いた結果が表示されます</span></div>
-
-      <table>
-        <thead>
-          <tr><th style="text-align:left">レア</th><th>表示確率</th><th>出た回数</th><th>体感確率</th></tr>
-        </thead>
-        <tbody id="resultBody"></tbody>
-      </table>
-
-      <div class="insight" id="insight" style="display:none"></div>
-
-      <div class="bag-grid-wrap" id="bagGridWrap" style="display:none">
-        <div class="bag-grid-title">🎁 袋の中身（100個）— 引いたものは薄くなります</div>
-        <div class="bag-grid" id="bagGrid"></div>
-        <div class="bag-legend">
-          <span><i class="legend-dot" style="background:var(--ssr)"></i>SSR</span>
-          <span><i class="legend-dot" style="background:var(--sr)"></i>SR</span>
-          <span><i class="legend-dot" style="background:var(--r)"></i>R</span>
-          <span><i class="legend-dot" style="background:var(--panel-light)"></i>引いた後</span>
-        </div>
-      </div>
-    </div>
-  </div>
+  <div id="mainLayout"></div>
 </div>
 
 <script>
-  let mode = 'replace';
-  const rarities = ['ssr','sr','r'];
-  const labels = { ssr:'SSR', sr:'SR', r:'R' };
-  const colors = { ssr:'var(--ssr)', sr:'var(--sr)', r:'var(--r)' };
+// ===== Global state =====
+let darkMode = true;
+let mode = 'replace';
+let sliderVals = { ur: 3, sr: 12 };
 
-  let counts = { ssr:0, sr:0, r:0 };
-  let totalPulls = 0;
-  let history = []; // 引いた履歴（全件・新しい順に表示）
-  let bag = []; // 非復元用（引く順：シャッフル済み、pop で取り出す）
-  let bagGrid = []; // 表示用100セル {rarity, drawn} 固定順
+const rarities = ['ur','sr','r'];
+const labels   = { ur:'UR', sr:'SR', r:'R' };
+const colors   = { ur:'var(--ur)', sr:'var(--sr)', r:'var(--r)' };
 
-  function getProbs() {
-    let ssr = +document.getElementById('ssrSlider').value;
-    let sr = +document.getElementById('srSlider').value;
-    // SSR + SR が 100 を超えないように SR を抑える
-    if (ssr + sr > 100) sr = 100 - ssr;
-    const r = 100 - ssr - sr;
-    return { ssr, sr, r };
+function newState() {
+  return { counts:{ur:0,sr:0,r:0}, totalPulls:0, history:[], bag:[], bagGrid:[] };
+}
+let states = { replace: newState(), noreplace: newState() };
+
+// ===== Probs =====
+function getProbs() {
+  let ur = sliderVals.ur, sr = sliderVals.sr;
+  if (ur + sr > 100) sr = 100 - ur;
+  return { ur, sr, r: 100 - ur - sr };
+}
+
+function onSlider() {
+  let ur = +document.getElementById('urSlider').value;
+  let sr = +document.getElementById('srSlider').value;
+  if (ur + sr > 100) { sr = 100 - ur; document.getElementById('srSlider').value = sr; }
+  sliderVals = { ur, sr };
+  const r = 100 - ur - sr;
+
+  document.getElementById('urVal').textContent = ur + '%';
+  document.getElementById('srVal').textContent = sr + '%';
+  document.getElementById('rVal').textContent  = r + '%';
+  document.getElementById('totalCheck').textContent = `合計：100%（UR ${ur}％ + SR ${sr}％ + R ${r}％）`;
+
+  updateCountBox();
+  updateEV();
+  if (mode !== 'replace') {
+    if (states.noreplace.totalPulls === 0) renderBagGrid();
   }
+  renderAll();
+}
 
-  function onSlider() {
-    let ssr = +document.getElementById('ssrSlider').value;
-    let sr = +document.getElementById('srSlider').value;
-    // SSR優先：SSR+SRが100を超えたらSRスライダーを戻す
-    if (ssr + sr > 100) {
-      sr = 100 - ssr;
-      document.getElementById('srSlider').value = sr;
-    }
-    const r = 100 - ssr - sr;
-
-    document.getElementById('ssrVal').textContent = ssr + '%';
-    document.getElementById('srVal').textContent = sr + '%';
-    document.getElementById('rVal').textContent = r + '%';
-
-    const tc = document.getElementById('totalCheck');
-    tc.textContent = `合計：100%（SSR ${ssr}％ + SR ${sr}％ + R ${r}％）`;
-    tc.className = 'total-check ok';
-
-    if (mode === 'noreplace') { updateCountBox(); if (totalPulls === 0) renderBagGrid(); }
-    updateButtons();
+function updateCountBox() {
+  const el = document.getElementById('countBox');
+  if (!el) return;
+  const p = getProbs();
+  if (mode === 'noreplace' || mode === 'compare') {
+    el.className = 'count-box show';
+    document.getElementById('countDetail').innerHTML = `UR ${p.ur}個 ／ SR ${p.sr}個 ／ R ${p.r}個`;
+  } else {
+    el.className = 'count-box';
   }
+}
 
-  function updateCountBox() {
+function updateEV() {
+  const p = getProbs();
+  const elR  = document.getElementById('evVal');
+  const elNR = document.getElementById('evValNR');
+  const wrapNR = document.getElementById('evNRWrap');
+  if (!elR) return;
+
+  if (p.ur === 0) {
+    elR.textContent = '∞';
+    if (elNR) elNR.textContent = '∞';
+  } else {
+    elR.textContent  = `平均 ${(100/p.ur).toFixed(1)} 回`;
+    if (elNR) elNR.textContent = `平均 ${((101)/(p.ur+1)).toFixed(1)} 回`;
+  }
+  if (wrapNR) wrapNR.style.display = (mode === 'replace') ? 'none' : '';
+}
+
+// ===== Bag =====
+function makeBag() {
+  const p = getProbs();
+  const st = states.noreplace;
+  st.bagGrid = [];
+  for (let i=0; i<p.ur; i++) st.bagGrid.push({rarity:'ur',drawn:false});
+  for (let i=0; i<p.sr; i++) st.bagGrid.push({rarity:'sr',drawn:false});
+  for (let i=0; i<p.r;  i++) st.bagGrid.push({rarity:'r', drawn:false});
+  st.bag = st.bagGrid.map((_,i) => i);
+  for (let i=st.bag.length-1; i>0; i--) {
+    const j = Math.floor(Math.random()*(i+1));
+    [st.bag[i],st.bag[j]] = [st.bag[j],st.bag[i]];
+  }
+}
+
+function renderBagGrid() {
+  const id = (mode === 'compare') ? 'bagGrid_compare' : 'bagGrid_single';
+  const el = document.getElementById(id);
+  if (!el) return;
+  const st = states.noreplace;
+  if (st.bagGrid.length === 0) {
     const p = getProbs();
-    const box = document.getElementById('countBox');
-    const detail = document.getElementById('countDetail');
-    detail.innerHTML = `SSR ${p.ssr}個 ／ SR ${p.sr}個 ／ R ${p.r}個`;
-    box.className = 'count-box show';
+    let cells = [];
+    for (let i=0; i<p.ur; i++) cells.push('ur');
+    for (let i=0; i<p.sr; i++) cells.push('sr');
+    for (let i=0; i<p.r;  i++) cells.push('r');
+    el.innerHTML = cells.map(r => `<div class="bag-cell filled-${r}"></div>`).join('');
+    return;
   }
+  el.innerHTML = st.bagGrid.map(c =>
+    `<div class="bag-cell filled-${c.rarity}${c.drawn?' drawn':''}"></div>`
+  ).join('');
+}
 
-  function setMode(m) {
-    mode = m;
-    document.getElementById('modeReplace').classList.toggle('active', m === 'replace');
-    document.getElementById('modeNoReplace').classList.toggle('active', m === 'noreplace');
-    document.getElementById('countBox').className = m === 'noreplace' ? 'count-box show' : 'count-box';
-    document.getElementById('bagGridWrap').style.display = m === 'noreplace' ? 'block' : 'none';
-    document.getElementById('btnBig').textContent = m === 'replace' ? '100連' : '全部引く';
-    document.getElementById('modeNote').textContent = m === 'replace'
-      ? 'ガチャは引いても確率が変わりません（毎回リセット）。何回引いても表示確率は一定です。'
-      : '福袋は引くと中身が減ります。引くほど残りの確率が変わっていきます。';
-    resetAll();
-    if (m === 'noreplace') { updateCountBox(); renderBagGrid(); }
+// ===== Draw one =====
+function drawOne(simType) {
+  if (simType === 'replace') {
+    const p = getProbs(), roll = Math.random()*100;
+    if (roll < p.ur) return 'ur';
+    if (roll < p.ur+p.sr) return 'sr';
+    return 'r';
+  } else {
+    const st = states.noreplace;
+    if (st.bag.length === 0) return null;
+    const idx = st.bag.pop();
+    st.bagGrid[idx].drawn = true;
+    return st.bagGrid[idx].rarity;
   }
+}
 
-  function makeBag() {
-    const p = getProbs();
-    // 表示用グリッド：固定順（SSR→SR→R）で100個並べる
-    bagGrid = [];
-    for (let i=0;i<p.ssr;i++) bagGrid.push({rarity:'ssr', drawn:false});
-    for (let i=0;i<p.sr;i++) bagGrid.push({rarity:'sr', drawn:false});
-    for (let i=0;i<p.r;i++) bagGrid.push({rarity:'r', drawn:false});
-    // 引く順：グリッドのindexをシャッフルした配列
-    bag = bagGrid.map((_, idx) => idx);
-    for (let i=bag.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [bag[i],bag[j]]=[bag[j],bag[i]]; }
-    renderBagGrid();
-  }
-
-  function renderBagGrid() {
-    const grid = document.getElementById('bagGrid');
-    if (bagGrid.length === 0) {
-      // まだ袋を作っていない → プレビュー表示
-      const p = getProbs();
-      let preview = [];
-      for (let i=0;i<p.ssr;i++) preview.push({rarity:'ssr', drawn:false});
-      for (let i=0;i<p.sr;i++) preview.push({rarity:'sr', drawn:false});
-      for (let i=0;i<p.r;i++) preview.push({rarity:'r', drawn:false});
-      grid.innerHTML = preview.map(c => `<div class="bag-cell filled-${c.rarity}"></div>`).join('');
-      return;
-    }
-    grid.innerHTML = bagGrid.map(c =>
-      `<div class="bag-cell filled-${c.rarity} ${c.drawn?'drawn':''}"></div>`
-    ).join('');
-  }
-
-  function drawOne() {
-    if (mode === 'replace') {
-      const p = getProbs();
-      const roll = Math.random()*100;
-      if (roll < p.ssr) return 'ssr';
-      if (roll < p.ssr + p.sr) return 'sr';
-      return 'r';
-    } else {
-      if (bag.length === 0) return null;
-      const idx = bag.pop();
-      bagGrid[idx].drawn = true;
-      return bagGrid[idx].rarity;
-    }
-  }
-
-  function validProbs() {
-    return true; // R は自動計算なので常に合計100%
-  }
-
-  function pull(n) {
-    if (!validProbs()) { alert('確率の合計を100%にしてください'); return; }
-    if (mode === 'noreplace' && bag.length === 0 && totalPulls === 0) makeBag();
-
-    for (let i=0;i<n;i++){
-      const r = drawOne();
-      if (r === null) break;
-      counts[r]++; totalPulls++; history.push(r);
-    }
-    renderHistory();
-    render();
-  }
-
-  function pullBig() {
-    if (!validProbs()) { alert('確率の合計を100%にしてください'); return; }
-    if (mode === 'replace') {
-      pull(100);
-    } else {
-      if (bag.length === 0 && totalPulls === 0) makeBag();
-      const remaining = bag.length;
-      pull(remaining);
-    }
-  }
-
-  function renderHistory() {
-    const el = document.getElementById('latest');
-    if (history.length === 0) { el.innerHTML = '<span class="latest-empty">ここに引いた結果が表示されます</span>'; return; }
-    // 新しい順に表示。DOM負荷を抑えるため最新300件まで描画
-    const CAP = 300;
-    const reversed = history.slice().reverse();
-    const show = reversed.slice(0, CAP);
-    let html = show.map(r => `<div class="pull-chip chip-${r}">${labels[r]}</div>`).join('');
-    if (history.length > CAP) {
-      html += `<span style="color:var(--muted);font-size:0.8rem;align-self:center">…古い${history.length-CAP}件は省略</span>`;
-    }
-    el.innerHTML = html;
-  }
-
-  function render() {
-    document.getElementById('totalPulls').textContent = totalPulls.toLocaleString();
-    const p = getProbs();
-    const body = document.getElementById('resultBody');
-    body.innerHTML = '';
-    rarities.forEach(r => {
-      const shown = p[r];
-      const actual = totalPulls > 0 ? (counts[r]/totalPulls*100) : 0;
-      const diff = actual - shown;
-      let diffStr = '';
-      if (totalPulls > 0) {
-        const sign = diff >= 0 ? '+' : '';
-        const cls = diff >= 0 ? 'diff-up' : 'diff-down';
-        diffStr = ` <span class="${cls}" style="font-size:0.75rem">(${sign}${diff.toFixed(1)})</span>`;
+// ===== Pull =====
+function pull(n) {
+  if (mode === 'compare') {
+    if (states.noreplace.bag.length === 0 && states.noreplace.totalPulls === 0) makeBag();
+    for (let i=0; i<n; i++) {
+      const r1 = drawOne('replace');
+      states.replace.counts[r1]++; states.replace.totalPulls++; states.replace.history.push(r1);
+      const r2 = drawOne('noreplace');
+      if (r2 !== null) {
+        states.noreplace.counts[r2]++; states.noreplace.totalPulls++; states.noreplace.history.push(r2);
       }
-      body.innerHTML += `
+    }
+  } else {
+    if (mode === 'noreplace' && states.noreplace.bag.length === 0 && states.noreplace.totalPulls === 0) makeBag();
+    const st = states[mode];
+    for (let i=0; i<n; i++) {
+      const r = drawOne(mode);
+      if (r === null) break;
+      st.counts[r]++; st.totalPulls++; st.history.push(r);
+    }
+  }
+  renderAll();
+}
+
+function pullBig() {
+  if (mode === 'replace') { pull(100); return; }
+  if (states.noreplace.bag.length === 0 && states.noreplace.totalPulls === 0) makeBag();
+  pull(states.noreplace.bag.length);
+}
+
+// ===== Render =====
+function renderAll() {
+  if (mode === 'compare') {
+    renderResults('replace',   'resultsReplace');
+    renderResults('noreplace', 'resultsNoreplace');
+    renderBagGrid();
+  } else {
+    renderResults(mode, 'results');
+    if (mode === 'noreplace') renderBagGrid();
+  }
+  updateButtons();
+}
+
+function renderResults(simType, containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const st = states[simType];
+  const p  = getProbs();
+
+  // Total pulls
+  const tpEl = container.querySelector('.total-pulls');
+  if (tpEl) tpEl.textContent = st.totalPulls.toLocaleString();
+
+  // History chips
+  const latestEl = container.querySelector('.latest');
+  if (latestEl) {
+    if (st.history.length === 0) {
+      latestEl.innerHTML = '<span class="latest-empty">ここに引いた結果が表示されます</span>';
+    } else {
+      const CAP = 250;
+      const show = st.history.slice().reverse().slice(0, CAP);
+      let html = show.map(r => `<div class="pull-chip chip-${r}">${labels[r]}</div>`).join('');
+      if (st.history.length > CAP) html += `<span style="color:var(--muted);font-size:0.74rem;align-self:center">…省略</span>`;
+      latestEl.innerHTML = html;
+    }
+  }
+
+  // Table
+  const tbody = container.querySelector('.result-tbody');
+  if (tbody) {
+    tbody.innerHTML = '';
+    rarities.forEach(r => {
+      const shown  = p[r];
+      const actual = st.totalPulls > 0 ? st.counts[r]/st.totalPulls*100 : 0;
+      const diff   = actual - shown;
+      let diffStr  = '';
+      if (st.totalPulls > 0) {
+        const cls = diff >= 0 ? 'diff-up' : 'diff-down';
+        diffStr = ` <span class="${cls}" style="font-size:0.72rem">(${diff>=0?'+':''}${diff.toFixed(1)})</span>`;
+      }
+      tbody.innerHTML += `
         <tr>
           <td class="rarity" style="color:${colors[r]}">${labels[r]}</td>
           <td>${shown}%</td>
-          <td>${counts[r]}</td>
-          <td class="compare">${totalPulls>0?actual.toFixed(1)+'%':'—'}${diffStr}</td>
+          <td>${st.counts[r]}</td>
+          <td class="compare-num">${st.totalPulls>0?actual.toFixed(1)+'%':'—'}${diffStr}</td>
         </tr>`;
     });
-
-    // bag status
-    const bs = document.getElementById('bagStatus');
-    if (mode === 'noreplace' && totalPulls > 0) {
-      bs.textContent = `袋の残り：${bag.length}個`;
-    } else { bs.textContent = ''; }
-
-    if (mode === 'noreplace') renderBagGrid();
-
-    updateButtons();
-    renderInsight();
   }
 
-  function updateButtons() {
-    if (mode === 'noreplace') {
-      const empty = totalPulls > 0 && bag.length === 0;
-      document.getElementById('btn1').disabled = empty;
-      document.getElementById('btn10').disabled = empty;
-      document.getElementById('btnBig').disabled = empty;
+  // Bag status (noreplace only)
+  const bsEl = container.querySelector('.bag-status');
+  if (bsEl) {
+    bsEl.textContent = (simType === 'noreplace' && st.totalPulls > 0)
+      ? `袋の残り：${states.noreplace.bag.length}個` : '';
+  }
+
+  // Graph
+  drawChart(simType, container);
+
+  // Insight
+  renderInsight(simType, container);
+}
+
+// ===== Chart =====
+function drawChart(simType, container) {
+  const canvas = container.querySelector('canvas.chart');
+  if (!canvas) return;
+  const st = states[simType];
+  const p  = getProbs();
+
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.clientWidth  || 300;
+  const H = canvas.clientHeight || 120;
+  canvas.width  = W * dpr;
+  canvas.height = H * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const bgC   = isDark ? '#252b52' : '#eef0ff';
+  const gridC = isDark ? '#333a66' : '#d0d4ee';
+  const txtC  = isDark ? '#9aa0c8' : '#6670a0';
+
+  ctx.fillStyle = bgC;
+  ctx.fillRect(0, 0, W, H);
+
+  if (st.history.length < 2) {
+    ctx.fillStyle = txtC; ctx.font = '11px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('引いた回数が増えるとグラフが表示されます', W/2, H/2);
+    return;
+  }
+
+  const pad = { top:14, right:12, bottom:20, left:36 };
+  const gW = W - pad.left - pad.right;
+  const gH = H - pad.top  - pad.bottom;
+
+  // Compute running UR rate (sampled)
+  const total = st.history.length;
+  const step  = Math.max(1, Math.floor(total / 300));
+  const pts = [];
+  let urC = 0;
+  for (let i=0; i<total; i++) {
+    if (st.history[i] === 'ur') urC++;
+    if (i % step === 0 || i === total-1) pts.push({ x:i+1, y:urC/(i+1)*100 });
+  }
+
+  const peakY = pts.reduce((m,pt) => Math.max(m, pt.y), 0);
+  const maxY  = Math.max(p.ur * 3.5, peakY * 1.15, 1);
+
+  // Horizontal grid lines
+  ctx.lineWidth = 1; ctx.setLineDash([3,3]);
+  const gridVals = [0, p.ur, Math.round(maxY)];
+  gridVals.forEach(v => {
+    const y = pad.top + gH - (v/maxY)*gH;
+    ctx.strokeStyle = gridC;
+    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left+gW, y); ctx.stroke();
+    ctx.fillStyle = txtC; ctx.font = '9px sans-serif'; ctx.textAlign = 'right';
+    ctx.fillText(v.toFixed(0)+'%', pad.left-3, y+3);
+  });
+  ctx.setLineDash([]);
+
+  // Expected line (dashed gold)
+  if (p.ur > 0) {
+    const ey = pad.top + gH - (p.ur/maxY)*gH;
+    ctx.strokeStyle = '#ffd54a'; ctx.lineWidth = 1.5;
+    ctx.setLineDash([5,4]);
+    ctx.beginPath(); ctx.moveTo(pad.left, ey); ctx.lineTo(pad.left+gW, ey); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#ffd54a'; ctx.font = '9px sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText('期待値 '+p.ur+'%', pad.left+4, ey-3);
+  }
+
+  // Actual line
+  const lineColor = simType === 'replace' ? '#6db3f2' : '#ff9f4a';
+  ctx.strokeStyle = lineColor; ctx.lineWidth = 2;
+  ctx.beginPath();
+  pts.forEach((pt,i) => {
+    const x = pad.left + (pt.x/total)*gW;
+    const y = pad.top  + gH - (pt.y/maxY)*gH;
+    if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+
+  // X axis label
+  ctx.fillStyle = txtC; ctx.font = '9px sans-serif'; ctx.textAlign = 'right';
+  ctx.fillText(total+'回', pad.left+gW, H-3);
+}
+
+// ===== Insight =====
+function renderInsight(simType, container) {
+  const el = container.querySelector('.insight');
+  if (!el) return;
+  const st = states[simType];
+  const p  = getProbs();
+  if (st.totalPulls < 10) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  const actualUR = st.counts.ur / st.totalPulls * 100;
+  const diff     = Math.abs(actualUR - p.ur);
+
+  if (simType === 'replace') {
+    if (st.totalPulls < 50) {
+      el.innerHTML = `<strong>まだ${st.totalPulls}回。</strong>体感確率は表示確率から大きくズレることがあります。引く回数を増やすと表示確率に近づいていきます（大数の法則）。`;
     } else {
-      document.getElementById('btn1').disabled = false;
-      document.getElementById('btn10').disabled = false;
-      document.getElementById('btnBig').disabled = false;
+      el.innerHTML = `<strong>${st.totalPulls}回引きました。</strong>URの体感は${actualUR.toFixed(1)}%（表示${p.ur}%との差 ${diff.toFixed(1)}pt）。引くほど収束していきます。`;
+    }
+  } else {
+    if (states.noreplace.bag.length === 0) {
+      el.innerHTML = `<strong>袋を全部引きました！</strong>非復元では全部引くと、体感確率は必ず表示確率と一致します。中身が最初から決まっているからです。ガチャとの決定的な違いです。`;
+    } else {
+      el.innerHTML = `<strong>残り${states.noreplace.bag.length}個。</strong>URを引いた後は次にURが出る確率が下がります。引くたびに確率が変化するのが非復元の特徴です。`;
     }
   }
+}
 
-  function renderInsight() {
-    const el = document.getElementById('insight');
-    if (totalPulls < 10) { el.style.display = 'none'; return; }
-    const p = getProbs();
-    const actualSSR = counts.ssr/totalPulls*100;
-    const diff = Math.abs(actualSSR - p.ssr);
-    el.style.display = 'block';
-    let msg = '';
-    if (mode === 'replace') {
-      if (totalPulls < 50) {
-        msg = `<strong>まだ${totalPulls}回。</strong>体感確率は表示確率から大きくズレることがあります。「3%なのに全然出ない！」はこのズレが原因。もっと引くと表示確率に近づいていきます（大数の法則）。`;
-      } else {
-        msg = `<strong>${totalPulls}回引きました。</strong>SSRの体感は${actualSSR.toFixed(1)}%（表示${p.ssr}%との差${diff.toFixed(1)}ポイント）。引く回数が増えるほど、体感は表示確率に近づきます。`;
-      }
-    } else {
-      if (bag.length === 0) {
-        msg = `<strong>袋を全部引きました。</strong>非復元では最後まで引くと、体感確率は必ず表示確率と一致します（中身が決まっているから）。ガチャ（復元）との違いがポイントです。`;
-      } else {
-        msg = `<strong>残り${bag.length}個。</strong>非復元では引くたびに残りの確率が変化します。例えばSSRを引いたら、次にSSRが出る確率は下がります。`;
-      }
-    }
-    el.innerHTML = msg;
-  }
+// ===== Buttons =====
+function updateButtons() {
+  const noReplaceEmpty = states.noreplace.totalPulls > 0 && states.noreplace.bag.length === 0;
+  const disabled = (mode !== 'replace') && noReplaceEmpty;
+  ['btn1','btn10','btnBig'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = disabled;
+  });
+  const bigBtn = document.getElementById('btnBig');
+  if (bigBtn) bigBtn.textContent = (mode === 'replace') ? '100連' : '全部引く';
+}
 
-  function resetAll() {
-    counts = { ssr:0, sr:0, r:0 };
-    totalPulls = 0; bag = []; bagGrid = []; history = [];
-    renderHistory();
-    render();
-    if (mode === 'noreplace') renderBagGrid();
-  }
+// ===== Reset =====
+function resetAll() {
+  states.replace  = newState();
+  states.noreplace = newState();
+  renderAll();
+  if (mode !== 'replace') renderBagGrid();
+}
 
-  onSlider();
+// ===== Theme =====
+function toggleTheme() {
+  darkMode = !darkMode;
+  document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
+  document.getElementById('themeBtn').textContent = darkMode ? '🌙' : '☀️';
+  renderAll(); // redraw canvas
+}
+
+// ===== Mode =====
+function setMode(m) {
+  mode = m;
+  document.getElementById('modeReplace').classList.toggle('active',   m === 'replace');
+  document.getElementById('modeNoReplace').classList.toggle('active', m === 'noreplace');
+  document.getElementById('modeCompare').classList.toggle('active',   m === 'compare');
+  buildLayout();
   resetAll();
+  updateCountBox();
+  updateEV();
+  if (m !== 'replace') renderBagGrid();
+}
+
+// ===== Layout builder =====
+function settingsHTML() {
+  const { ur, sr } = sliderVals;
+  const r = 100 - ur - sr;
+  return `
+  <div class="card" id="settingsCard">
+    <h2>⚙️ 排出確率を設定</h2>
+    <div class="slider-row">
+      <div class="slider-label">
+        <span class="rarity-tag tag-ur">UR</span>
+        <span class="pct-val" id="urVal" style="color:var(--ur)">${ur}%</span>
+      </div>
+      <input type="range" id="urSlider" min="0" max="100" value="${ur}" step="1" oninput="onSlider()">
+    </div>
+    <div class="slider-row">
+      <div class="slider-label">
+        <span class="rarity-tag tag-sr">SR</span>
+        <span class="pct-val" id="srVal" style="color:var(--sr)">${sr}%</span>
+      </div>
+      <input type="range" id="srSlider" min="0" max="100" value="${sr}" step="1" oninput="onSlider()">
+    </div>
+    <div class="slider-row">
+      <div class="slider-label">
+        <span class="rarity-tag tag-r">R（自動計算）</span>
+        <span class="pct-val" id="rVal" style="color:var(--r)">${r}%</span>
+      </div>
+      <div style="font-size:0.78rem;color:var(--muted)">R＝100％ − UR − SR で自動的に決まります</div>
+    </div>
+    <div class="total-check ok" id="totalCheck">合計：100%（UR ${ur}％ + SR ${sr}％ + R ${r}％）</div>
+    <div class="count-box" id="countBox">
+      <strong>袋の中身（合計100個）</strong>
+      <div id="countDetail">UR ${ur}個 ／ SR ${sr}個 ／ R ${r}個</div>
+    </div>
+
+    <div class="ev-box">
+      <div class="ev-title">🎯 UR 1枚を引くまでの期待値</div>
+      <div class="ev-cols">
+        <div class="ev-item">
+          <div class="ev-label">🎰 ガチャ（復元）</div>
+          <div class="ev-val" id="evVal">—</div>
+        </div>
+        <div class="ev-item" id="evNRWrap">
+          <div class="ev-label">🎁 福袋（非復元）</div>
+          <div class="ev-val" id="evValNR">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="pull-btn primary" id="btn1"   onclick="pull(1)">1回引く</button>
+      <button class="pull-btn"         id="btn10"  onclick="pull(10)">10連</button>
+      <button class="pull-btn"         id="btnBig" onclick="pullBig()">100連</button>
+    </div>
+    <button class="reset-btn" onclick="resetAll()">↺ リセット</button>
+    <p class="note" id="modeNote"></p>
+  </div>`;
+}
+
+function resultsHTML(containerId, title, showBag) {
+  const header = title
+    ? `<div class="compare-col-header">${title}</div>`
+    : '';
+  const bagGridId = showBag
+    ? (mode === 'compare' ? 'bagGrid_compare' : 'bagGrid_single')
+    : '';
+  const bagSection = showBag ? `
+    <div class="bag-grid-wrap">
+      <div class="bag-grid-title">🎁 袋の中身 — 引いたものは薄くなります</div>
+      <div class="bag-grid" id="${bagGridId}"></div>
+      <div class="bag-legend">
+        <span><i class="legend-dot" style="background:var(--ur)"></i>UR</span>
+        <span><i class="legend-dot" style="background:var(--sr)"></i>SR</span>
+        <span><i class="legend-dot" style="background:var(--r)"></i>R</span>
+        <span><i class="legend-dot" style="background:var(--panel-light);border:1px solid var(--line)"></i>引いた後</span>
+      </div>
+    </div>` : '';
+
+  return `
+  <div class="card" id="${containerId}">
+    ${header}
+    <div class="total-pulls">0</div>
+    <div class="total-pulls-label">これまでに引いた回数</div>
+    <div class="latest"><span class="latest-empty">ここに引いた結果が表示されます</span></div>
+    <table>
+      <thead>
+        <tr>
+          <th style="text-align:left">レア</th>
+          <th>表示確率</th>
+          <th>回数</th>
+          <th>体感確率</th>
+        </tr>
+      </thead>
+      <tbody class="result-tbody"></tbody>
+    </table>
+    <div class="bag-status"></div>
+    <div class="graph-wrap">
+      <div class="graph-legend">
+        📈 体感UR確率の推移
+        <span style="color:#ffd54a">- - 期待値</span>
+        <span style="color:${containerId.includes('Noreplace') ? '#ff9f4a' : '#6db3f2'}">— 体感</span>
+      </div>
+      <canvas class="chart" style="height:120px"></canvas>
+    </div>
+    <div class="insight" style="display:none"></div>
+    ${bagSection}
+  </div>`;
+}
+
+function buildLayout() {
+  const layout = document.getElementById('mainLayout');
+  if (mode === 'replace') {
+    layout.innerHTML = `<div class="grid-2">${settingsHTML()}${resultsHTML('results','',false)}</div>`;
+    document.getElementById('modeNote').textContent =
+      'ガチャは引いても確率が変わりません（毎回リセット）。何回引いても表示確率は一定です。';
+  } else if (mode === 'noreplace') {
+    layout.innerHTML = `<div class="grid-2">${settingsHTML()}${resultsHTML('results','',true)}</div>`;
+    document.getElementById('modeNote').textContent =
+      '福袋は引くと中身が減ります。引くほど残りの確率が変わっていきます。';
+  } else {
+    layout.innerHTML = `
+      <div class="grid-3">
+        ${settingsHTML()}
+        ${resultsHTML('resultsReplace',   '🎰 ガチャ（復元抽出）',   false)}
+        ${resultsHTML('resultsNoreplace', '🎁 福袋（非復元抽出）',   true)}
+      </div>`;
+    document.getElementById('modeNote').textContent =
+      '同じ確率設定でガチャと福袋を同時にシミュレートします。結果の違いを比べてみましょう。';
+  }
+}
+
+// ===== Init =====
+buildLayout();
+updateEV();
+renderAll();
 </script>
 </body>
 </html>
