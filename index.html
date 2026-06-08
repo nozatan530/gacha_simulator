@@ -4,6 +4,19 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>ガチャ確率シミュレーター</title>
+<meta name="description" content="ガチャの排出確率をシミュレーション。天井までの費用・期待値・確率分布をグラフで可視化。複数バナーの比較も可能。">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://gacha.nozkoh.com/">
+<meta property="og:title" content="ガチャ確率シミュレーター">
+<meta property="og:description" content="ガチャの排出確率をシミュレーション。天井までの費用・期待値・確率分布をグラフで可視化。複数バナーの比較も可能。">
+<meta property="og:image" content="https://gacha.nozkoh.com/Gacha.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="ja_JP">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="ガチャ確率シミュレーター">
+<meta name="twitter:description" content="ガチャの排出確率をシミュレーション。天井までの費用・期待値・確率分布をグラフで可視化。複数バナーの比較も可能。">
+<meta name="twitter:image" content="https://gacha.nozkoh.com/Gacha.png">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Orbitron:wght@700;900&display=swap');
 
@@ -266,22 +279,145 @@ canvas.chart { width: 100%; height: 120px; border-radius: 8px; display: block; }
 <div class="wrap">
   <div class="header">
     <h1>GACHA SIMULATOR</h1>
-    <button class="theme-btn" id="themeBtn" onclick="toggleTheme()" title="ライト/ダーク切替">🌙</button>
+    <div style="position:absolute; right:0; display:flex; gap:8px;">
+      <button class="theme-btn" id="themeBtn" onclick="toggleTheme()" title="ライト/ダーク切替" data-i18n-title="themeBtnTitle" style="position:static">🌙</button>
+      <button class="theme-btn" id="langBtn" onclick="toggleLang()" title="言語切替" data-i18n-title="langBtnTitle" style="position:static; width:auto; border-radius:21px; padding:0 14px; font-size:0.8rem; font-weight:700;">EN</button>
+    </div>
   </div>
-  <p class="subtitle">表示されている確率と、実際に引いた体感はどれくらいズレる？</p>
+  <p class="subtitle" id="subtitle" data-i18n="subtitle">表示されている確率と、実際に引いた体感はどれくらいズレる？</p>
 
   <div class="mode-switch">
-    <button class="mode-btn active" id="modeReplace"   onclick="setMode('replace')">🎰 ガチャ（復元抽出）</button>
-    <button class="mode-btn"        id="modeNoReplace" onclick="setMode('noreplace')">🎁 福袋（非復元抽出）</button>
-    <button class="mode-btn"        id="modeCompare"   onclick="setMode('compare')">⚖️ 並べて比較</button>
+    <button class="mode-btn active" id="modeReplace"   onclick="setMode('replace')" data-i18n="modeReplace">🎰 ガチャ（復元抽出）</button>
+    <button class="mode-btn"        id="modeNoReplace" onclick="setMode('noreplace')" data-i18n="modeNoReplace">🎁 福袋（非復元抽出）</button>
+    <button class="mode-btn"        id="modeCompare"   onclick="setMode('compare')" data-i18n="modeCompare">⚖️ 並べて比較</button>
   </div>
 
   <div id="mainLayout"></div>
 </div>
 
 <script>
+// ===== i18n =====
+const I18N = {
+  ja: {
+    themeBtnTitle: 'ライト/ダーク切替',
+    langBtnTitle: '言語切替',
+    subtitle: '表示されている確率と、実際に引いた体感はどれくらいズレる？',
+    modeReplace: '🎰 ガチャ（復元抽出）',
+    modeNoReplace: '🎁 福袋（非復元抽出）',
+    modeCompare: '⚖️ 並べて比較',
+    settingsTitle: '⚙️ 排出確率を設定',
+    rAuto: 'R（自動計算）',
+    rAutoNote: 'R＝100％ − UR − SR で自動的に決まります',
+    totalCheck: (ur,sr,r) => `合計：100%（UR ${ur}％ + SR ${sr}％ + R ${r}％）`,
+    bagContents: '袋の中身（合計100個）',
+    bagDetail: (ur,sr,r) => `UR ${ur}個 ／ SR ${sr}個 ／ R ${r}個`,
+    evTitle: '🎯 UR 1枚を引くまでの期待値',
+    evLabelReplace: '🎰 ガチャ（復元）',
+    evLabelNoReplace: '🎁 福袋（非復元）',
+    evAvg: n => `平均 ${n} 回`,
+    btnPull1: '1回引く',
+    btnPull10: '10連',
+    btnPullBig: '100連',
+    btnPullAll: '全部引く',
+    resetBtn: '↺ リセット',
+    noteReplace: 'ガチャは引いても確率が変わりません（毎回リセット）。何回引いても表示確率は一定です。',
+    noteNoReplace: '福袋は引くと中身が減ります。引くほど残りの確率が変わっていきます。',
+    noteCompare: '同じ確率設定でガチャと福袋を同時にシミュレートします。結果の違いを比べてみましょう。',
+    compareHeaderReplace: '🎰 ガチャ（復元抽出）',
+    compareHeaderNoReplace: '🎁 福袋（非復元抽出）',
+    totalPullsLabel: 'これまでに引いた回数',
+    latestEmpty: 'ここに引いた結果が表示されます',
+    omitted: '…省略',
+    thRarity: 'レア',
+    thShown: '表示確率',
+    thCount: '回数',
+    thActual: '体感確率',
+    bagGridTitle: '🎁 袋の中身 — 引いたものは薄くなります',
+    legendDrawn: '引いた後',
+    graphLegendTitle: '📈 体感UR確率の推移',
+    graphLegendExpected: '- - 期待値',
+    graphLegendActual: '— 体感',
+    chartNoData: '引いた回数が増えるとグラフが表示されます',
+    chartExpected: pct => `期待値 ${pct}%`,
+    chartTimes: n => `${n}回`,
+    bagRemaining: n => `袋の残り：${n}個`,
+    insightReplaceEarly: n => `<strong>まだ${n}回。</strong>体感確率は表示確率から大きくズレることがあります。引く回数を増やすと表示確率に近づいていきます（大数の法則）。`,
+    insightReplaceLater: (n,actual,p,diff) => `<strong>${n}回引きました。</strong>URの体感は${actual}%（表示${p}%との差 ${diff}pt）。引くほど収束していきます。`,
+    insightBagEmpty: `<strong>袋を全部引きました！</strong>非復元では全部引くと、体感確率は必ず表示確率と一致します。中身が最初から決まっているからです。ガチャとの決定的な違いです。`,
+    insightBagRemaining: n => `<strong>残り${n}個。</strong>URを引いた後は次にURが出る確率が下がります。引くたびに確率が変化するのが非復元の特徴です。`
+  },
+  en: {
+    themeBtnTitle: 'Toggle light/dark mode',
+    langBtnTitle: 'Switch language',
+    subtitle: 'How far does the displayed probability drift from what you actually feel when you pull?',
+    modeReplace: '🎰 Gacha (with replacement)',
+    modeNoReplace: '🎁 Lucky Bag (without replacement)',
+    modeCompare: '⚖️ Compare side by side',
+    settingsTitle: '⚙️ Set drop rates',
+    rAuto: 'R (auto-calculated)',
+    rAutoNote: 'R is automatically determined as 100% − UR − SR',
+    totalCheck: (ur,sr,r) => `Total: 100% (UR ${ur}% + SR ${sr}% + R ${r}%)`,
+    bagContents: 'Bag contents (100 items total)',
+    bagDetail: (ur,sr,r) => `UR ${ur} ／ SR ${sr} ／ R ${r}`,
+    evTitle: '🎯 Expected pulls to get one UR',
+    evLabelReplace: '🎰 Gacha (with replacement)',
+    evLabelNoReplace: '🎁 Lucky Bag (without replacement)',
+    evAvg: n => `avg. ${n} pulls`,
+    btnPull1: 'Pull ×1',
+    btnPull10: 'Pull ×10',
+    btnPullBig: 'Pull ×100',
+    btnPullAll: 'Pull all',
+    resetBtn: '↺ Reset',
+    noteReplace: 'Gacha probabilities never change as you pull (reset each time). The displayed rate stays constant no matter how many times you pull.',
+    noteNoReplace: 'A lucky bag loses contents as you pull. The remaining odds keep changing the more you pull.',
+    noteCompare: 'Simulates gacha and lucky bag side by side with the same rate settings. Compare how the results differ.',
+    compareHeaderReplace: '🎰 Gacha (with replacement)',
+    compareHeaderNoReplace: '🎁 Lucky Bag (without replacement)',
+    totalPullsLabel: 'Total pulls so far',
+    latestEmpty: 'Your pull results will appear here',
+    omitted: '…omitted',
+    thRarity: 'Rarity',
+    thShown: 'Shown rate',
+    thCount: 'Count',
+    thActual: 'Actual rate',
+    bagGridTitle: '🎁 Bag contents — drawn items fade out',
+    legendDrawn: 'Drawn',
+    graphLegendTitle: '📈 Felt UR rate over time',
+    graphLegendExpected: '- - Expected',
+    graphLegendActual: '— Actual',
+    chartNoData: 'The graph appears once you have pulled more times',
+    chartExpected: pct => `Expected ${pct}%`,
+    chartTimes: n => `${n} pulls`,
+    bagRemaining: n => `Bag remaining: ${n}`,
+    insightReplaceEarly: n => `<strong>Only ${n} pulls so far.</strong> The felt probability can deviate significantly from the displayed rate. The more you pull, the closer it gets to the displayed rate (law of large numbers).`,
+    insightReplaceLater: (n,actual,p,diff) => `<strong>You've pulled ${n} times.</strong> The felt UR rate is ${actual}% (a ${diff}pt difference from the displayed ${p}%). It converges the more you pull.`,
+    insightBagEmpty: `<strong>You've drawn the whole bag!</strong> Without replacement, drawing everything always makes the felt probability match the displayed rate exactly — because the contents were fixed from the start. This is the key difference from gacha.`,
+    insightBagRemaining: n => `<strong>${n} items remaining.</strong> After drawing a UR, the odds of drawing another UR drop. The probability changes with every pull — that's the nature of drawing without replacement.`
+  }
+};
+function t(key, ...args) {
+  const v = I18N[lang][key];
+  return typeof v === 'function' ? v(...args) : v;
+}
+function applyStaticI18n() {
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = t(el.dataset.i18nTitle); });
+  document.getElementById('langBtn').textContent = lang === 'ja' ? 'EN' : 'JA';
+  document.documentElement.lang = lang;
+}
+function toggleLang() {
+  lang = (lang === 'ja') ? 'en' : 'ja';
+  applyStaticI18n();
+  buildLayout();
+  resetAll();
+  updateCountBox();
+  updateEV();
+  if (mode !== 'replace') renderBagGrid();
+}
+
 // ===== Global state =====
 let darkMode = true;
+let lang = 'ja';
 let mode = 'replace';
 let sliderVals = { ur: 3, sr: 12 };
 
@@ -311,7 +447,7 @@ function onSlider() {
   document.getElementById('urVal').textContent = ur + '%';
   document.getElementById('srVal').textContent = sr + '%';
   document.getElementById('rVal').textContent  = r + '%';
-  document.getElementById('totalCheck').textContent = `合計：100%（UR ${ur}％ + SR ${sr}％ + R ${r}％）`;
+  document.getElementById('totalCheck').textContent = t('totalCheck', ur, sr, r);
 
   updateCountBox();
   updateEV();
@@ -327,7 +463,7 @@ function updateCountBox() {
   const p = getProbs();
   if (mode === 'noreplace' || mode === 'compare') {
     el.className = 'count-box show';
-    document.getElementById('countDetail').innerHTML = `UR ${p.ur}個 ／ SR ${p.sr}個 ／ R ${p.r}個`;
+    document.getElementById('countDetail').innerHTML = t('bagDetail', p.ur, p.sr, p.r);
   } else {
     el.className = 'count-box';
   }
@@ -344,8 +480,8 @@ function updateEV() {
     elR.textContent = '∞';
     if (elNR) elNR.textContent = '∞';
   } else {
-    elR.textContent  = `平均 ${(100/p.ur).toFixed(1)} 回`;
-    if (elNR) elNR.textContent = `平均 ${((101)/(p.ur+1)).toFixed(1)} 回`;
+    elR.textContent  = t('evAvg', (100/p.ur).toFixed(1));
+    if (elNR) elNR.textContent = t('evAvg', ((101)/(p.ur+1)).toFixed(1));
   }
   if (wrapNR) wrapNR.style.display = (mode === 'replace') ? 'none' : '';
 }
@@ -457,12 +593,12 @@ function renderResults(simType, containerId) {
   const latestEl = container.querySelector('.latest');
   if (latestEl) {
     if (st.history.length === 0) {
-      latestEl.innerHTML = '<span class="latest-empty">ここに引いた結果が表示されます</span>';
+      latestEl.innerHTML = `<span class="latest-empty">${t('latestEmpty')}</span>`;
     } else {
       const CAP = 250;
       const show = st.history.slice().reverse().slice(0, CAP);
       let html = show.map(r => `<div class="pull-chip chip-${r}">${labels[r]}</div>`).join('');
-      if (st.history.length > CAP) html += `<span style="color:var(--muted);font-size:0.74rem;align-self:center">…省略</span>`;
+      if (st.history.length > CAP) html += `<span style="color:var(--muted);font-size:0.74rem;align-self:center">${t('omitted')}</span>`;
       latestEl.innerHTML = html;
     }
   }
@@ -494,7 +630,7 @@ function renderResults(simType, containerId) {
   const bsEl = container.querySelector('.bag-status');
   if (bsEl) {
     bsEl.textContent = (simType === 'noreplace' && st.totalPulls > 0)
-      ? `袋の残り：${states.noreplace.bag.length}個` : '';
+      ? t('bagRemaining', states.noreplace.bag.length) : '';
   }
 
   // Graph
@@ -529,7 +665,7 @@ function drawChart(simType, container) {
 
   if (st.history.length < 2) {
     ctx.fillStyle = txtC; ctx.font = '11px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('引いた回数が増えるとグラフが表示されます', W/2, H/2);
+    ctx.fillText(t('chartNoData'), W/2, H/2);
     return;
   }
 
@@ -570,7 +706,7 @@ function drawChart(simType, container) {
     ctx.beginPath(); ctx.moveTo(pad.left, ey); ctx.lineTo(pad.left+gW, ey); ctx.stroke();
     ctx.setLineDash([]);
     ctx.fillStyle = '#ffd54a'; ctx.font = '9px sans-serif'; ctx.textAlign = 'left';
-    ctx.fillText('期待値 '+p.ur+'%', pad.left+4, ey-3);
+    ctx.fillText(t('chartExpected', p.ur), pad.left+4, ey-3);
   }
 
   // Actual line
@@ -586,7 +722,7 @@ function drawChart(simType, container) {
 
   // X axis label
   ctx.fillStyle = txtC; ctx.font = '9px sans-serif'; ctx.textAlign = 'right';
-  ctx.fillText(total+'回', pad.left+gW, H-3);
+  ctx.fillText(t('chartTimes', total), pad.left+gW, H-3);
 }
 
 // ===== Insight =====
@@ -602,15 +738,15 @@ function renderInsight(simType, container) {
 
   if (simType === 'replace') {
     if (st.totalPulls < 50) {
-      el.innerHTML = `<strong>まだ${st.totalPulls}回。</strong>体感確率は表示確率から大きくズレることがあります。引く回数を増やすと表示確率に近づいていきます（大数の法則）。`;
+      el.innerHTML = t('insightReplaceEarly', st.totalPulls);
     } else {
-      el.innerHTML = `<strong>${st.totalPulls}回引きました。</strong>URの体感は${actualUR.toFixed(1)}%（表示${p.ur}%との差 ${diff.toFixed(1)}pt）。引くほど収束していきます。`;
+      el.innerHTML = t('insightReplaceLater', st.totalPulls, actualUR.toFixed(1), p.ur, diff.toFixed(1));
     }
   } else {
     if (states.noreplace.bag.length === 0) {
-      el.innerHTML = `<strong>袋を全部引きました！</strong>非復元では全部引くと、体感確率は必ず表示確率と一致します。中身が最初から決まっているからです。ガチャとの決定的な違いです。`;
+      el.innerHTML = t('insightBagEmpty');
     } else {
-      el.innerHTML = `<strong>残り${states.noreplace.bag.length}個。</strong>URを引いた後は次にURが出る確率が下がります。引くたびに確率が変化するのが非復元の特徴です。`;
+      el.innerHTML = t('insightBagRemaining', states.noreplace.bag.length);
     }
   }
 }
@@ -624,7 +760,7 @@ function updateButtons() {
     if (el) el.disabled = disabled;
   });
   const bigBtn = document.getElementById('btnBig');
-  if (bigBtn) bigBtn.textContent = (mode === 'replace') ? '100連' : '全部引く';
+  if (bigBtn) bigBtn.textContent = (mode === 'replace') ? t('btnPullBig') : t('btnPullAll');
 }
 
 // ===== Reset =====
@@ -662,7 +798,7 @@ function settingsHTML() {
   const r = 100 - ur - sr;
   return `
   <div class="card" id="settingsCard">
-    <h2>⚙️ 排出確率を設定</h2>
+    <h2>${t('settingsTitle')}</h2>
     <div class="slider-row">
       <div class="slider-label">
         <span class="rarity-tag tag-ur">UR</span>
@@ -679,57 +815,57 @@ function settingsHTML() {
     </div>
     <div class="slider-row">
       <div class="slider-label">
-        <span class="rarity-tag tag-r">R（自動計算）</span>
+        <span class="rarity-tag tag-r">${t('rAuto')}</span>
         <span class="pct-val" id="rVal" style="color:var(--r)">${r}%</span>
       </div>
-      <div style="font-size:0.78rem;color:var(--muted)">R＝100％ − UR − SR で自動的に決まります</div>
+      <div style="font-size:0.78rem;color:var(--muted)">${t('rAutoNote')}</div>
     </div>
-    <div class="total-check ok" id="totalCheck">合計：100%（UR ${ur}％ + SR ${sr}％ + R ${r}％）</div>
+    <div class="total-check ok" id="totalCheck">${t('totalCheck', ur, sr, r)}</div>
     <div class="count-box" id="countBox">
-      <strong>袋の中身（合計100個）</strong>
-      <div id="countDetail">UR ${ur}個 ／ SR ${sr}個 ／ R ${r}個</div>
+      <strong>${t('bagContents')}</strong>
+      <div id="countDetail">${t('bagDetail', ur, sr, r)}</div>
     </div>
 
     <div class="ev-box">
-      <div class="ev-title">🎯 UR 1枚を引くまでの期待値</div>
+      <div class="ev-title">${t('evTitle')}</div>
       <div class="ev-cols">
         <div class="ev-item">
-          <div class="ev-label">🎰 ガチャ（復元）</div>
+          <div class="ev-label">${t('evLabelReplace')}</div>
           <div class="ev-val" id="evVal">—</div>
         </div>
         <div class="ev-item" id="evNRWrap">
-          <div class="ev-label">🎁 福袋（非復元）</div>
+          <div class="ev-label">${t('evLabelNoReplace')}</div>
           <div class="ev-val" id="evValNR">—</div>
         </div>
       </div>
     </div>
 
     <div class="btn-row">
-      <button class="pull-btn primary" id="btn1"   onclick="pull(1)">1回引く</button>
-      <button class="pull-btn"         id="btn10"  onclick="pull(10)">10連</button>
-      <button class="pull-btn"         id="btnBig" onclick="pullBig()">100連</button>
+      <button class="pull-btn primary" id="btn1"   onclick="pull(1)">${t('btnPull1')}</button>
+      <button class="pull-btn"         id="btn10"  onclick="pull(10)">${t('btnPull10')}</button>
+      <button class="pull-btn"         id="btnBig" onclick="pullBig()">${mode === 'replace' ? t('btnPullBig') : t('btnPullAll')}</button>
     </div>
-    <button class="reset-btn" onclick="resetAll()">↺ リセット</button>
+    <button class="reset-btn" onclick="resetAll()">${t('resetBtn')}</button>
     <p class="note" id="modeNote"></p>
   </div>`;
 }
 
-function resultsHTML(containerId, title, showBag) {
-  const header = title
-    ? `<div class="compare-col-header">${title}</div>`
+function resultsHTML(containerId, titleKey, showBag) {
+  const header = titleKey
+    ? `<div class="compare-col-header">${t(titleKey)}</div>`
     : '';
   const bagGridId = showBag
     ? (mode === 'compare' ? 'bagGrid_compare' : 'bagGrid_single')
     : '';
   const bagSection = showBag ? `
     <div class="bag-grid-wrap">
-      <div class="bag-grid-title">🎁 袋の中身 — 引いたものは薄くなります</div>
+      <div class="bag-grid-title">${t('bagGridTitle')}</div>
       <div class="bag-grid" id="${bagGridId}"></div>
       <div class="bag-legend">
         <span><i class="legend-dot" style="background:var(--ur)"></i>UR</span>
         <span><i class="legend-dot" style="background:var(--sr)"></i>SR</span>
         <span><i class="legend-dot" style="background:var(--r)"></i>R</span>
-        <span><i class="legend-dot" style="background:var(--panel-light);border:1px solid var(--line)"></i>引いた後</span>
+        <span><i class="legend-dot" style="background:var(--panel-light);border:1px solid var(--line)"></i>${t('legendDrawn')}</span>
       </div>
     </div>` : '';
 
@@ -737,15 +873,15 @@ function resultsHTML(containerId, title, showBag) {
   <div class="card" id="${containerId}">
     ${header}
     <div class="total-pulls">0</div>
-    <div class="total-pulls-label">これまでに引いた回数</div>
-    <div class="latest"><span class="latest-empty">ここに引いた結果が表示されます</span></div>
+    <div class="total-pulls-label">${t('totalPullsLabel')}</div>
+    <div class="latest"><span class="latest-empty">${t('latestEmpty')}</span></div>
     <table>
       <thead>
         <tr>
-          <th style="text-align:left">レア</th>
-          <th>表示確率</th>
-          <th>回数</th>
-          <th>体感確率</th>
+          <th style="text-align:left">${t('thRarity')}</th>
+          <th>${t('thShown')}</th>
+          <th>${t('thCount')}</th>
+          <th>${t('thActual')}</th>
         </tr>
       </thead>
       <tbody class="result-tbody"></tbody>
@@ -753,9 +889,9 @@ function resultsHTML(containerId, title, showBag) {
     <div class="bag-status"></div>
     <div class="graph-wrap">
       <div class="graph-legend">
-        📈 体感UR確率の推移
-        <span style="color:#ffd54a">- - 期待値</span>
-        <span style="color:${containerId.includes('Noreplace') ? '#ff9f4a' : '#6db3f2'}">— 体感</span>
+        ${t('graphLegendTitle')}
+        <span style="color:#ffd54a">${t('graphLegendExpected')}</span>
+        <span style="color:${containerId.includes('Noreplace') ? '#ff9f4a' : '#6db3f2'}">${t('graphLegendActual')}</span>
       </div>
       <canvas class="chart" style="height:120px"></canvas>
     </div>
@@ -768,25 +904,23 @@ function buildLayout() {
   const layout = document.getElementById('mainLayout');
   if (mode === 'replace') {
     layout.innerHTML = `<div class="grid-2">${settingsHTML()}${resultsHTML('results','',false)}</div>`;
-    document.getElementById('modeNote').textContent =
-      'ガチャは引いても確率が変わりません（毎回リセット）。何回引いても表示確率は一定です。';
+    document.getElementById('modeNote').textContent = t('noteReplace');
   } else if (mode === 'noreplace') {
     layout.innerHTML = `<div class="grid-2">${settingsHTML()}${resultsHTML('results','',true)}</div>`;
-    document.getElementById('modeNote').textContent =
-      '福袋は引くと中身が減ります。引くほど残りの確率が変わっていきます。';
+    document.getElementById('modeNote').textContent = t('noteNoReplace');
   } else {
     layout.innerHTML = `
       <div class="grid-3">
         ${settingsHTML()}
-        ${resultsHTML('resultsReplace',   '🎰 ガチャ（復元抽出）',   false)}
-        ${resultsHTML('resultsNoreplace', '🎁 福袋（非復元抽出）',   true)}
+        ${resultsHTML('resultsReplace',   'compareHeaderReplace',   false)}
+        ${resultsHTML('resultsNoreplace', 'compareHeaderNoReplace', true)}
       </div>`;
-    document.getElementById('modeNote').textContent =
-      '同じ確率設定でガチャと福袋を同時にシミュレートします。結果の違いを比べてみましょう。';
+    document.getElementById('modeNote').textContent = t('noteCompare');
   }
 }
 
 // ===== Init =====
+applyStaticI18n();
 buildLayout();
 updateEV();
 renderAll();
