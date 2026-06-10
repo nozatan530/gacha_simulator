@@ -39,3 +39,8 @@
 ## ライセンス
 
 MIT License
+
+## 制作
+
+[のざたん](https://meetupsensei.com) — 会いに行けるセンセイ  
+[Voicy「学びのセカンドオピニオン」](https://voicy.jp/channel/3708)

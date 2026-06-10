@@ -273,6 +273,9 @@ canvas.chart { width: 100%; height: 120px; border-radius: 8px; display: block; }
 .bag-legend { display: flex; gap: 12px; margin-top: 8px; font-size: 0.74rem; color: var(--muted); flex-wrap: wrap; }
 .bag-legend span { display: flex; align-items: center; gap: 4px; }
 .legend-dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+
+footer { margin-top: 16px; padding: 12px; text-align: center; font-size: 0.78rem; color: var(--muted); }
+footer a { color: var(--muted); }
 </style>
 </head>
 <body>
@@ -293,6 +296,8 @@ canvas.chart { width: 100%; height: 120px; border-radius: 8px; display: block; }
   </div>
 
   <div id="mainLayout"></div>
+
+  <footer data-i18n-html="footer">制作：のざたん／ <a href="https://meetupsensei.com" target="_blank" rel="noopener">meetupsensei.com</a></footer>
 </div>
 
 <script>
@@ -344,7 +349,8 @@ const I18N = {
     insightReplaceEarly: n => `<strong>まだ${n}回。</strong>体感確率は表示確率から大きくズレることがあります。引く回数を増やすと表示確率に近づいていきます（大数の法則）。`,
     insightReplaceLater: (n,actual,p,diff) => `<strong>${n}回引きました。</strong>URの体感は${actual}%（表示${p}%との差 ${diff}pt）。引くほど収束していきます。`,
     insightBagEmpty: `<strong>袋を全部引きました！</strong>非復元では全部引くと、体感確率は必ず表示確率と一致します。中身が最初から決まっているからです。ガチャとの決定的な違いです。`,
-    insightBagRemaining: n => `<strong>残り${n}個。</strong>URを引いた後は次にURが出る確率が下がります。引くたびに確率が変化するのが非復元の特徴です。`
+    insightBagRemaining: n => `<strong>残り${n}個。</strong>URを引いた後は次にURが出る確率が下がります。引くたびに確率が変化するのが非復元の特徴です。`,
+    footer: '制作：のざたん／ <a href="https://meetupsensei.com" target="_blank" rel="noopener">meetupsensei.com</a>'
   },
   en: {
     themeBtnTitle: 'Toggle light/dark mode',
@@ -392,7 +398,8 @@ const I18N = {
     insightReplaceEarly: n => `<strong>Only ${n} pulls so far.</strong> The felt probability can deviate significantly from the displayed rate. The more you pull, the closer it gets to the displayed rate (law of large numbers).`,
     insightReplaceLater: (n,actual,p,diff) => `<strong>You've pulled ${n} times.</strong> The felt UR rate is ${actual}% (a ${diff}pt difference from the displayed ${p}%). It converges the more you pull.`,
     insightBagEmpty: `<strong>You've drawn the whole bag!</strong> Without replacement, drawing everything always makes the felt probability match the displayed rate exactly — because the contents were fixed from the start. This is the key difference from gacha.`,
-    insightBagRemaining: n => `<strong>${n} items remaining.</strong> After drawing a UR, the odds of drawing another UR drop. The probability changes with every pull — that's the nature of drawing without replacement.`
+    insightBagRemaining: n => `<strong>${n} items remaining.</strong> After drawing a UR, the odds of drawing another UR drop. The probability changes with every pull — that's the nature of drawing without replacement.`,
+    footer: 'Created by Nozatan / <a href="https://meetupsensei.com" target="_blank" rel="noopener">meetupsensei.com</a>'
   }
 };
 function t(key, ...args) {
@@ -402,6 +409,7 @@ function t(key, ...args) {
 function applyStaticI18n() {
   document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
   document.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = t(el.dataset.i18nTitle); });
+  document.querySelectorAll('[data-i18n-html]').forEach(el => { el.innerHTML = t(el.dataset.i18nHtml); });
   document.getElementById('langBtn').textContent = lang === 'ja' ? 'EN' : 'JA';
   document.documentElement.lang = lang;
 }
